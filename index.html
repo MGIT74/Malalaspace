@@ -8,16 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#15171C;
-    --surface:#1E2129;
-    --surface-alt:#262A34;
-    --border:#2E323C;
-    --text:#F2F0EA;
-    --text-muted:#8B90A0;
-    --accent:#FF4B5C;
-    --accent-dim:#5A2530;
-    --teal:#33D6A6;
-    --amber:#F5B942;
+    --ink:#000000;
+    --surface:#1C1C1E;
+    --surface-alt:#2C2C2E;
+    --border:#38383A;
+    --text:#F5F5F7;
+    --text-muted:#98989D;
+    --accent:#0A84FF;
+    --accent-dim:#0A3A66;
+    --danger:#FF453A;
+    --danger-dim:#5C2420;
+    --teal:#30D158;
+    --amber:#FF9F0A;
     --radius:10px;
   }
   *{box-sizing:border-box}
@@ -37,7 +39,7 @@
   .btn{border:1px solid var(--border);background:var(--surface-alt);color:var(--text);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:.15s;}
   .btn:hover{border-color:#454b59;}
   .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .btn-primary:hover{background:#ff3850;}
+  .btn-primary:hover{background:#2b95ff;}
   .btn-ghost{background:transparent;border:none;color:var(--text-muted);}
   .btn-ghost:hover{color:var(--text);}
   .btn:disabled{opacity:.5;cursor:not-allowed;}
@@ -55,7 +57,7 @@
   input,select,textarea{width:100%;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:7px;font-size:14px;font-family:inherit;}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .error-box{background:rgba(255,75,92,.12);border:1px solid var(--accent-dim);color:#ff9aa4;padding:10px 12px;border-radius:7px;font-size:13px;margin-top:14px;}
+  .error-box{background:rgba(255,69,58,.12);border:1px solid var(--danger-dim);color:#ff8a80;padding:10px 12px;border-radius:7px;font-size:13px;margin-top:14px;}
   .auth-submit{width:100%;margin-top:22px;padding:11px;}
 
   /* ---------- Dashboard ---------- */
@@ -69,10 +71,10 @@
   .card .company{font-size:13px;color:var(--text-muted);margin-bottom:14px;}
   .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
   .badge-NEW{background:#2c3040;color:#9aa4c7;}
-  .badge-BRIEF_PENDING,.badge-BRIEF_VALIDATED{background:rgba(245,185,66,.15);color:var(--amber);}
-  .badge-IN_PRODUCTION,.badge-IN_REVIEW{background:rgba(255,75,92,.15);color:var(--accent);}
-  .badge-CLIENT_WAITING{background:rgba(255,75,92,.15);color:var(--accent);}
-  .badge-READY_FOR_DELIVERY,.badge-DELIVERED{background:rgba(51,214,166,.15);color:var(--teal);}
+  .badge-BRIEF_PENDING,.badge-BRIEF_VALIDATED{background:rgba(255,159,10,.15);color:var(--amber);}
+  .badge-IN_PRODUCTION,.badge-IN_REVIEW{background:rgba(10,132,255,.15);color:var(--accent);}
+  .badge-CLIENT_WAITING{background:rgba(255,69,58,.15);color:var(--danger);}
+  .badge-READY_FOR_DELIVERY,.badge-DELIVERED{background:rgba(48,209,88,.15);color:var(--teal);}
 
   /* Timeline scrubber — signature element, evoque une timeline de montage vidéo */
   .scrubber{display:flex;align-items:center;gap:3px;margin:16px 0 8px;}
@@ -116,7 +118,7 @@
   .file-actions a:hover, .file-actions button:hover{color:var(--text);}
 
   .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-  .toast.error{border-color:var(--accent-dim);color:#ff9aa4;}
+  .toast.error{border-color:var(--danger-dim);color:#ff8a80;}
   .toast.success{border-color:rgba(51,214,166,.3);color:var(--teal);}
 </style>
 </head>
