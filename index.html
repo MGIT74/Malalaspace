@@ -44,7 +44,14 @@
   .btn-ghost:hover{color:var(--text);}
   .btn:disabled{opacity:.5;cursor:not-allowed;}
 
-  main{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:40px 32px 80px;}
+  main{flex:1;padding:32px 40px;overflow-y:auto;}
+  .page-container{max-width:1000px;}
+  .layout{display:flex;flex:1;min-height:0;}
+  .sidebar{width:210px;flex-shrink:0;border-right:1px solid var(--border);padding:20px 10px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--text-muted);font-size:14px;cursor:pointer;margin-bottom:2px;user-select:none;}
+  .nav-item:hover{background:var(--surface-alt);color:var(--text);}
+  .nav-item.active{background:var(--surface-alt);color:var(--text);}
+  .nav-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);padding:18px 12px 6px;}
   .hidden{display:none !important;}
 
   /* ---------- Auth ---------- */
@@ -120,6 +127,13 @@
   .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);}
   .toast.error{border-color:var(--danger-dim);color:#ff8a80;}
   .toast.success{border-color:rgba(51,214,166,.3);color:var(--teal);}
+
+  .integration-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;}
+  .integration-row .detail{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;}
+  .status-dot.on{background:var(--teal);}
+  .status-dot.off{background:var(--text-muted);}
+  .settings-form{max-width:480px;margin-top:20px;}
 </style>
 </head>
 <body>
@@ -170,7 +184,16 @@
       </div>
     </div>
 
-    <main>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="nav-item active" data-view="dashboard">📁 Projets</div>
+        <div class="nav-item hidden" id="nav-clients" data-view="clients">👥 Clients</div>
+        <div class="nav-section-label hidden" id="nav-admin-label">Administration</div>
+        <div class="nav-item hidden" id="nav-settings" data-view="settings">⚙️ Paramètres</div>
+      </aside>
+
+      <main>
+      <div class="page-container">
       <!-- DASHBOARD -->
       <section id="view-dashboard">
         <div class="page-head">
@@ -180,6 +203,49 @@
         <div id="projects-grid" class="grid"></div>
         <div id="projects-empty" class="empty-state hidden">
           Aucun projet pour l'instant.<br/><span style="font-size:13px">Cliquez sur « + Nouveau projet » pour démarrer votre première vidéo.</span>
+        </div>
+      </section>
+
+      <!-- CLIENTS (CRM basique) -->
+      <section id="view-clients" class="hidden">
+        <div class="page-head"><h1>Clients</h1></div>
+        <table>
+          <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th></tr></thead>
+          <tbody id="clients-tbody"></tbody>
+        </table>
+        <div id="clients-empty" class="empty-state hidden">Aucun client pour l'instant.</div>
+      </section>
+
+      <!-- PARAMÈTRES -->
+      <section id="view-settings" class="hidden">
+        <div class="page-head"><h1>Paramètres</h1></div>
+        <div class="tabs">
+          <div class="tab active" data-settings-tab="integrations">Intégrations</div>
+          <div class="tab" data-settings-tab="smtp">Email SMTP</div>
+        </div>
+
+        <div id="settings-tab-integrations">
+          <div id="integrations-list"></div>
+          <p class="save-hint">Ces statuts reflètent la configuration du serveur (fichier .env). Pour les modifier, il faut mettre à jour les variables d'environnement côté serveur.</p>
+        </div>
+
+        <div id="settings-tab-smtp" class="hidden">
+          <p class="save-hint" style="margin-bottom:6px">L'envoi d'emails automatiques (notifications, confirmations) n'est pas encore actif — cette configuration prépare le terrain pour l'activer prochainement.</p>
+          <div class="settings-form">
+            <label>Hôte SMTP</label>
+            <input id="smtp-host" placeholder="ex: smtp.sendgrid.net" />
+            <div class="field-row">
+              <div><label>Port</label><input id="smtp-port" placeholder="587" /></div>
+              <div><label>Utilisateur</label><input id="smtp-user" /></div>
+            </div>
+            <label>Mot de passe <span id="smtp-password-status" style="color:var(--text-muted);font-weight:400;"></span></label>
+            <input id="smtp-password" type="password" placeholder="Laisser vide pour ne pas modifier" />
+            <label>Adresse d'expédition</label>
+            <input id="smtp-from" type="email" placeholder="no-reply@malalaspace.com" />
+            <div class="save-row">
+              <button class="btn btn-primary" id="save-smtp-btn">Enregistrer</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -270,7 +336,9 @@
           <div class="steps-list" id="steps-list"></div>
         </div>
       </section>
-    </main>
+      </div>
+      </main>
+    </div>
   </div>
 </div>
 
@@ -367,20 +435,110 @@
     document.getElementById('app-shell').classList.remove('hidden');
   }
 
+  // ---------- Sidebar navigation ----------
+  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail'];
+  function switchView(view){
+    ALL_VIEWS.forEach(v => {
+      document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+    });
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.view === view);
+    });
+  }
+
+  document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const view = item.dataset.view;
+      if (view === 'dashboard') showDashboard();
+      else if (view === 'clients') showClients();
+      else if (view === 'settings') showSettings();
+    });
+  });
+
+  function applyRoleVisibility(role){
+    const isAdmin = role === 'ADMIN';
+    const isTeam = role === 'ADMIN' || role === 'EMPLOYEE';
+    document.getElementById('nav-clients').classList.toggle('hidden', !isTeam);
+    document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
+    document.getElementById('nav-admin-label').classList.toggle('hidden', !isAdmin);
+  }
+
   function showDashboard(){
     state.currentProject = null;
-    document.getElementById('view-dashboard').classList.remove('hidden');
-    document.getElementById('view-detail').classList.add('hidden');
+    switchView('dashboard');
     location.hash = '';
     loadProjects();
   }
 
   async function showDetail(id){
-    document.getElementById('view-dashboard').classList.add('hidden');
-    document.getElementById('view-detail').classList.remove('hidden');
+    switchView('detail');
     location.hash = 'project/' + id;
     await loadProjectDetail(id);
   }
+
+  async function showClients(){
+    switchView('clients');
+    try {
+      const clients = await api('/users/clients');
+      const tbody = document.getElementById('clients-tbody');
+      const empty = document.getElementById('clients-empty');
+      tbody.innerHTML = '';
+      if (!clients.length) { empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      clients.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  async function showSettings(){
+    switchView('settings');
+    try {
+      const integrations = await api('/settings/integrations');
+      const list = document.getElementById('integrations-list');
+      list.innerHTML = '';
+      Object.values(integrations).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'integration-row';
+        row.innerHTML = `<div><div><span class="status-dot ${item.configured ? 'on' : 'off'}"></span>${escapeHtml(item.label)}</div>${item.detail ? `<div class="detail">${escapeHtml(item.detail)}</div>` : ''}</div><span style="font-size:12px;color:var(--text-muted)">${item.configured ? 'Configuré' : 'Non configuré'}</span>`;
+        list.appendChild(row);
+      });
+
+      const smtp = await api('/settings/smtp');
+      document.getElementById('smtp-host').value = smtp.host;
+      document.getElementById('smtp-port').value = smtp.port;
+      document.getElementById('smtp-user').value = smtp.user;
+      document.getElementById('smtp-from').value = smtp.from;
+      document.getElementById('smtp-password-status').textContent = smtp.passwordSet ? '(déjà enregistré)' : '(non défini)';
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  document.querySelectorAll('#view-settings .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#view-settings .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      ['integrations','smtp'].forEach(name => {
+        document.getElementById('settings-tab-' + name).classList.toggle('hidden', name !== tab.dataset.settingsTab);
+      });
+    });
+  });
+
+  document.getElementById('save-smtp-btn').addEventListener('click', async () => {
+    try {
+      await api('/settings/smtp', { method:'PUT', body: JSON.stringify({
+        host: document.getElementById('smtp-host').value,
+        port: document.getElementById('smtp-port').value,
+        user: document.getElementById('smtp-user').value,
+        password: document.getElementById('smtp-password').value || undefined,
+        from: document.getElementById('smtp-from').value,
+      })});
+      document.getElementById('smtp-password').value = '';
+      toast('Configuration SMTP enregistrée.');
+      showSettings();
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   // ---------- Auth actions ----------
   document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -429,6 +587,7 @@
     state.user = data.user;
     localStorage.setItem('mls_user', JSON.stringify(data.user));
     document.getElementById('user-email').textContent = data.user.firstName + ' (' + data.user.email + ')';
+    applyRoleVisibility(data.user.role);
     showApp();
     showDashboard();
   }
@@ -648,6 +807,7 @@
     if (tokens.access && savedUser) {
       state.user = JSON.parse(savedUser);
       document.getElementById('user-email').textContent = state.user.firstName + ' (' + state.user.email + ')';
+      applyRoleVisibility(state.user.role);
       showApp();
       const hashMatch = location.hash.match(/project\/(\d+)/);
       if (hashMatch) showDetail(hashMatch[1]); else showDashboard();

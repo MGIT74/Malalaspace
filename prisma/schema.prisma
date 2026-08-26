@@ -295,3 +295,13 @@ model InternalNote {
   @@index([projectId])
   @@map("internal_notes")
 }
+
+/// Configuration clé/valeur modifiable par l'admin (SMTP, futurs paramètres...).
+/// Les valeurs sensibles (mots de passe) ne sont jamais renvoyées telles quelles par l'API.
+model Setting {
+  id        String   @id // ex: "smtp_host", "smtp_password"
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
