@@ -16,4 +16,9 @@ const getById = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: project });
 });
 
-module.exports = { list, create, getById };
+const assign = asyncHandler(async (req, res) => {
+  const project = await projectService.assignProject(req.user, req.params.id, req.body.employeeId);
+  res.status(200).json({ success: true, data: project });
+});
+
+module.exports = { list, create, getById, assign };

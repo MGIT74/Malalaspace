@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
+const notificationService = require('./notificationService');
 
 /**
  * Étapes par défaut de la timeline (Phase 2 les rendra configurables par l'admin)
@@ -114,4 +115,33 @@ async function getProjectForUser(user, projectId) {
   return project;
 }
 
-module.exports = { listProjects, createProject, getProjectForUser, scopeForUser };
+/**
+ * Attribue un projet à un employé. Réservé à l'admin.
+ */
+async function assignProject(user, projectId, employeeId) {
+  if (user.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+
+  const employee = await prisma.user.findUnique({ where: { id: Number(employeeId) } });
+  if (!employee || employee.role !== 'EMPLOYEE') {
+    throw ApiError.badRequest('Cet utilisateur n\'est pas un employé.');
+  }
+
+  const project = await prisma.project.update({
+    where: { id: Number(projectId) },
+    data: { assignedUserId: employee.id },
+  });
+
+  await notificationService.createNotification(
+    employee.id,
+    project.id,
+    'project_assigned',
+    'Nouveau projet attribué',
+    `Le projet "${project.name}" vous a été attribué.`
+  );
+
+  return project;
+}
+
+module.exports = { listProjects, createProject, getProjectForUser, scopeForUser, assignProject };

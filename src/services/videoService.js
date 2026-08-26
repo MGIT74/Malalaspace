@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
+const notificationService = require('./notificationService');
 
 function canManageVideos(user, project) {
   return user.role === 'ADMIN' || (user.role === 'EMPLOYEE' && project.assignedUserId === user.id);
@@ -43,6 +44,14 @@ async function createVersion(user, project, data) {
     data: { status: data.isFinal ? 'READY_FOR_DELIVERY' : 'IN_REVIEW' },
   });
 
+  await notificationService.createNotification(
+    project.clientId,
+    project.id,
+    'video_ready',
+    'Nouvelle vidéo disponible',
+    `Une nouvelle version de "${project.name}" est disponible : ${data.title}.`
+  );
+
   return version;
 }
 
@@ -71,6 +80,14 @@ async function validateVersion(user, project, videoId) {
     where: { id: project.id },
     data: { status: version.isFinal ? 'READY_FOR_DELIVERY' : 'IN_PRODUCTION' },
   });
+
+  await notificationService.createNotification(
+    project.assignedUserId,
+    project.id,
+    'validation',
+    'Version validée par le client',
+    `Le client a validé la version "${version.title}" de "${project.name}".`
+  );
 
   return updated;
 }

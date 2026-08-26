@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const projectService = require('./projectService');
+const notificationService = require('./notificationService');
 const ApiError = require('../utils/apiError');
 
 /**
@@ -39,6 +40,16 @@ async function upsertBrief(user, projectId, data) {
       where: { id: Number(projectId) },
       data: { status: 'BRIEF_PENDING' },
     });
+  }
+
+  if (data.isDraft === false) {
+    await notificationService.createNotification(
+      project.assignedUserId,
+      project.id,
+      'brief_validated',
+      'Brief client validé',
+      `Le client a validé le brief de "${project.name}".`
+    );
   }
 
   return brief;

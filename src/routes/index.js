@@ -3,6 +3,7 @@ const authRoutes = require('./authRoutes');
 const projectRoutes = require('./projectRoutes');
 const userRoutes = require('./userRoutes');
 const settingsRoutes = require('./settingsRoutes');
+const notificationRoutes = require('./notificationRoutes');
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ router.use('/auth', authRoutes);
 router.use('/projects', projectRoutes);
 router.use('/users', userRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/notifications', notificationRoutes);
 
 // Phase 2+: router.use('/files', fileRoutes); router.use('/videos', ...); etc.
 

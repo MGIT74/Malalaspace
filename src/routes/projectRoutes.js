@@ -5,7 +5,9 @@ const fileController = require('../controllers/fileController');
 const videoController = require('../controllers/videoController');
 const commentController = require('../controllers/commentController');
 const stepController = require('../controllers/stepController');
+const noteController = require('../controllers/noteController');
 const authenticate = require('../middleware/authenticate');
+const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const loadProject = require('../middleware/loadProject');
 const upload = require('../middleware/upload');
@@ -14,6 +16,8 @@ const { upsertBriefSchema } = require('../validators/briefValidator');
 const { createVideoSchema } = require('../validators/videoValidator');
 const { createCommentSchema, updateCommentStatusSchema } = require('../validators/commentValidator');
 const { updateStepSchema } = require('../validators/stepValidator');
+const { createNoteSchema } = require('../validators/noteValidator');
+const { assignProjectSchema } = require('../validators/assignValidator');
 
 const router = express.Router();
 
@@ -23,6 +27,7 @@ router.use(authenticate);
 router.get('/', projectController.list);
 router.post('/', validate(createProjectSchema), projectController.create);
 router.get('/:id', projectController.getById);
+router.patch('/:id/assign', authorize('ADMIN'), validate(assignProjectSchema), projectController.assign);
 
 router.get('/:id/brief', briefController.getBrief);
 router.put('/:id/brief', validate(upsertBriefSchema), briefController.upsertBrief);
@@ -42,5 +47,8 @@ router.post('/:id/comments', loadProject, validate(createCommentSchema), comment
 router.patch('/:id/comments/:commentId/status', loadProject, validate(updateCommentStatusSchema), commentController.updateStatus);
 
 router.patch('/:id/steps/:stepId', loadProject, validate(updateStepSchema), stepController.update);
+
+router.get('/:id/notes', loadProject, noteController.list);
+router.post('/:id/notes', loadProject, validate(createNoteSchema), noteController.create);
 
 module.exports = router;

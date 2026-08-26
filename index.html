@@ -199,6 +199,16 @@
     <div class="topbar">
       <div class="brand"><span class="brand-dot"></span> Malalaspace</div>
       <div class="user-chip">
+        <div style="position:relative">
+          <button class="btn btn-ghost" id="notif-bell" style="font-size:16px;">🔔<span id="notif-count" class="hidden" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;"></span></button>
+          <div id="notif-dropdown" class="hidden" style="position:absolute;right:0;top:38px;width:320px;max-height:400px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:60;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);">
+              <strong style="font-size:13px">Notifications</strong>
+              <button class="btn-ghost" id="notif-mark-all" style="font-size:12px;text-decoration:underline;background:none;border:none;color:var(--text-muted);cursor:pointer;">Tout marquer comme lu</button>
+            </div>
+            <div id="notif-list"></div>
+          </div>
+        </div>
         <span id="user-email"></span>
         <button class="btn btn-ghost" id="logout-btn">Déconnexion</button>
       </div>
@@ -296,6 +306,7 @@
           <div class="tab" data-tab="videos">Vidéos</div>
           <div class="tab" data-tab="assets">Assets</div>
           <div class="tab" data-tab="steps">Production</div>
+          <div class="tab hidden" data-tab="notes" id="notes-tab-btn">Notes internes</div>
         </div>
 
         <!-- Brief tab -->
@@ -381,7 +392,24 @@
 
         <!-- Steps tab -->
         <div id="tab-steps" class="hidden">
+          <div id="assign-wrap" class="hidden" style="margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+            <label style="margin-top:0">Employé assigné</label>
+            <div style="display:flex;gap:8px;">
+              <select id="assign-select" style="flex:1"></select>
+              <button class="btn btn-primary" id="assign-btn">Attribuer</button>
+            </div>
+          </div>
           <div class="steps-list" id="steps-list"></div>
+        </div>
+
+        <!-- Notes internes tab (équipe uniquement) -->
+        <div id="tab-notes" class="hidden">
+          <p class="save-hint" style="margin-bottom:14px;">Ces notes ne sont jamais visibles par le client.</p>
+          <div class="comment-form" style="margin-bottom:16px;">
+            <input type="text" id="note-input" placeholder="Ajouter une note interne..." />
+            <button class="btn" id="add-note-btn">Ajouter</button>
+          </div>
+          <div id="notes-list"></div>
         </div>
       </section>
       </div>
@@ -671,6 +699,8 @@
     applyRoleVisibility(data.user.role);
     showApp();
     showDashboard();
+    refreshNotifications();
+    startNotifPolling();
   }
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -756,9 +786,10 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-detail .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['brief','videos','assets','steps'].forEach(name => {
+      ['brief','videos','assets','steps','notes'].forEach(name => {
         document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
       });
+      if (tab.dataset.tab === 'notes') loadNotes(state.currentProject.id);
     });
   });
 
@@ -777,6 +808,17 @@
       const currentStep = (p.steps||[]).find(s=>s.status==='IN_PROGRESS');
       document.getElementById('detail-progress-label').textContent = `${doneCount}/${(p.steps||[]).length} étapes complétées`;
       document.getElementById('detail-next-step').textContent = currentStep ? '→ ' + currentStep.name : '';
+
+      // Visibilité équipe : notes internes + attribution employé
+      const isTeam = state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE';
+      document.getElementById('notes-tab-btn').classList.toggle('hidden', !isTeam);
+      const assignWrap = document.getElementById('assign-wrap');
+      if (state.user.role === 'ADMIN') {
+        assignWrap.classList.remove('hidden');
+        await populateEmployeeSelect(p.assignedUserId);
+      } else {
+        assignWrap.classList.add('hidden');
+      }
 
       // brief
       const b = p.brief || {};
@@ -881,6 +923,197 @@
       toast('Fichier ajouté.');
       loadFiles(state.currentProject.id);
     } catch(err){ toast(err.message, 'error'); }
+  }
+
+  // ---------- Assignation employé (admin) ----------
+  async function populateEmployeeSelect(assignedUserId){
+    try {
+      const users = await api('/users');
+      const employees = users.filter(u => u.role === 'EMPLOYEE');
+      const select = document.getElementById('assign-select');
+      select.innerHTML = '<option value="">— Non attribué —</option>' +
+        employees.map(e => `<option value="${e.id}" ${e.id===assignedUserId?'selected':''}>${escapeHtml(e.firstName+' '+e.lastName)} (${escapeHtml(e.email)})</option>`).join('');
+    } catch(err){ /* silencieux : l'admin verra juste un select vide */ }
+  }
+
+  document.getElementById('assign-btn').addEventListener('click', async () => {
+    const employeeId = document.getElementById('assign-select').value;
+    if (!employeeId) { toast('Choisissez un employé.', 'error'); return; }
+    try {
+      await api('/projects/' + state.currentProject.id + '/assign', { method:'PATCH', body: JSON.stringify({ employeeId: Number(employeeId) }) });
+      toast('Projet attribué.');
+      loadProjectDetail(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Notes internes (équipe uniquement) ----------
+  async function loadNotes(projectId){
+    try {
+      const notes = await api('/projects/' + projectId + '/notes');
+      const list = document.getElementById('notes-list');
+      list.innerHTML = '';
+      if (!notes.length) { list.innerHTML = '<div class="empty-state">Aucune note pour l\'instant.</div>'; return; }
+      notes.forEach(n => {
+        const el = document.createElement('div');
+        el.className = 'comment-item';
+        el.innerHTML = `<div class="comment-head"><strong style="color:var(--text)">${escapeHtml(n.user.firstName)}</strong><span>${new Date(n.createdAt).toLocaleString('fr-FR')}</span></div><div>${escapeHtml(n.content)}</div>`;
+        list.appendChild(el);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  document.getElementById('add-note-btn').addEventListener('click', async () => {
+    const input = document.getElementById('note-input');
+    if (!input.value.trim()) return;
+    try {
+      await api('/projects/' + state.currentProject.id + '/notes', { method:'POST', body: JSON.stringify({ content: input.value }) });
+      input.value = '';
+      loadNotes(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Notifications ----------
+  const NOTIF_ICONS = { new_comment:'💬', video_ready:'🎬', validation:'✅', brief_validated:'📋', project_assigned:'📁' };
+
+  async function refreshNotifications(){
+    try {
+      const notifications = await api('/notifications');
+      const unread = notifications.filter(n => !n.readAt);
+      const countEl = document.getElementById('notif-count');
+      if (unread.length) { countEl.textContent = unread.length; countEl.classList.remove('hidden'); }
+      else { countEl.classList.add('hidden'); }
+
+      const list = document.getElementById('notif-list');
+      list.innerHTML = '';
+      if (!notifications.length) {
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Aucune notification.</div>';
+        return;
+      }
+      notifications.slice(0, 20).forEach(n => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;' + (n.readAt ? 'opacity:.55;' : '');
+        item.innerHTML = `<div>${NOTIF_ICONS[n.type]||'🔔'} <strong>${escapeHtml(n.title)}</strong></div><div style="color:var(--text-muted);margin-top:2px;">${escapeHtml(n.message)}</div>`;
+        item.addEventListener('click', async () => {
+          if (!n.readAt) { await api('/notifications/' + n.id + '/read', { method:'PATCH' }); }
+          document.getElementById('notif-dropdown').classList.add('hidden');
+          if (n.projectId) showDetail(n.projectId);
+          refreshNotifications();
+        });
+        list.appendChild(item);
+      });
+    } catch(err){ /* silencieux */ }
+  }
+
+  document.getElementById('notif-bell').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('notif-dropdown').classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('notif-dropdown');
+    if (!dropdown.contains(e.target) && e.target.id !== 'notif-bell') dropdown.classList.add('hidden');
+  });
+  document.getElementById('notif-mark-all').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try { await api('/notifications/read-all', { method:'PATCH' }); refreshNotifications(); } catch(err){}
+  });
+
+  // ---------- Assignation d'employé (admin) ----------
+  async function populateEmployeeSelect(currentAssignedId){
+    try {
+      const users = await api('/users');
+      const employees = users.filter(u => u.role === 'EMPLOYEE');
+      const select = document.getElementById('assign-select');
+      select.innerHTML = '<option value="">— Non attribué —</option>' +
+        employees.map(e => `<option value="${e.id}" ${e.id === currentAssignedId ? 'selected' : ''}>${escapeHtml(e.firstName + ' ' + e.lastName)}</option>`).join('');
+    } catch(err){ /* silencieux si pas admin */ }
+  }
+
+  document.getElementById('assign-btn').addEventListener('click', async () => {
+    const employeeId = document.getElementById('assign-select').value;
+    if (!employeeId) { toast('Choisissez un employé.', 'error'); return; }
+    try {
+      await api('/projects/' + state.currentProject.id + '/assign', { method:'PATCH', body: JSON.stringify({ employeeId: Number(employeeId) }) });
+      toast('Projet attribué.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Notes internes (équipe uniquement) ----------
+  async function loadNotes(projectId){
+    try {
+      const notes = await api('/projects/' + projectId + '/notes');
+      const list = document.getElementById('notes-list');
+      list.innerHTML = '';
+      if (!notes.length) { list.innerHTML = '<div class="empty-state">Aucune note pour l\'instant.</div>'; return; }
+      notes.forEach(n => {
+        const el = document.createElement('div');
+        el.className = 'comment-item';
+        el.innerHTML = `<div class="comment-head"><strong style="color:var(--text)">${escapeHtml(n.user.firstName)}</strong><span>${new Date(n.createdAt).toLocaleString('fr-FR')}</span></div><div>${escapeHtml(n.content)}</div>`;
+        list.appendChild(el);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  document.getElementById('add-note-btn').addEventListener('click', async () => {
+    const input = document.getElementById('note-input');
+    if (!input.value.trim()) return;
+    try {
+      await api('/projects/' + state.currentProject.id + '/notes', { method:'POST', body: JSON.stringify({ content: input.value }) });
+      input.value = '';
+      loadNotes(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Notifications ----------
+  let notifPollTimer = null;
+
+  async function refreshNotifCount(){
+    try {
+      const notifs = await api('/notifications');
+      const unread = notifs.filter(n => !n.readAt).length;
+      const badge = document.getElementById('notif-count');
+      if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
+      else { badge.classList.add('hidden'); }
+      return notifs;
+    } catch(err){ return []; }
+  }
+
+  function renderNotifList(notifs){
+    const list = document.getElementById('notif-list');
+    list.innerHTML = '';
+    if (!notifs.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Aucune notification</div>'; return; }
+    notifs.slice(0, 20).forEach(n => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;' + (!n.readAt ? 'background:rgba(10,132,255,.06);' : '');
+      item.innerHTML = `<div style="font-size:13px;font-weight:600;">${escapeHtml(n.title)}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escapeHtml(n.message)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${new Date(n.createdAt).toLocaleString('fr-FR')}</div>`;
+      item.addEventListener('click', async () => {
+        if (!n.readAt) { await api('/notifications/' + n.id + '/read', { method:'PATCH' }); }
+        if (n.projectId) showDetail(n.projectId);
+        document.getElementById('notif-dropdown').classList.add('hidden');
+        refreshNotifCount().then(renderNotifList);
+      });
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById('notif-bell').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById('notif-dropdown');
+    const willShow = dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden');
+    if (willShow) { const notifs = await refreshNotifCount(); renderNotifList(notifs); }
+  });
+  document.addEventListener('click', () => document.getElementById('notif-dropdown').classList.add('hidden'));
+  document.getElementById('notif-dropdown').addEventListener('click', e => e.stopPropagation());
+
+  document.getElementById('notif-mark-all').addEventListener('click', async () => {
+    try { await api('/notifications/read-all', { method:'PATCH' }); const notifs = await refreshNotifCount(); renderNotifList(notifs); }
+    catch(err){ toast(err.message, 'error'); }
+  });
+
+  function startNotifPolling(){
+    refreshNotifCount();
+    if (notifPollTimer) clearInterval(notifPollTimer);
+    notifPollTimer = setInterval(refreshNotifCount, 30000); // toutes les 30s
   }
 
   // ---------- Videos & comments ----------
@@ -1009,6 +1242,12 @@
     return el;
   }
 
+  let notifPollInterval = null;
+  function startNotifPolling(){
+    if (notifPollInterval) clearInterval(notifPollInterval);
+    notifPollInterval = setInterval(refreshNotifications, 30000);
+  }
+
   // ---------- Boot ----------
   (function boot(){
     const savedUser = localStorage.getItem('mls_user');
@@ -1017,6 +1256,8 @@
       document.getElementById('user-email').textContent = state.user.firstName + ' (' + state.user.email + ')';
       applyRoleVisibility(state.user.role);
       showApp();
+      refreshNotifications();
+      startNotifPolling();
       const hashMatch = location.hash.match(/project\/(\d+)/);
       if (hashMatch) showDetail(hashMatch[1]); else showDashboard();
     } else {
