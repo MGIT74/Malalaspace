@@ -3,7 +3,7 @@ const authService = require('../services/authService');
 const env = require('../config/env');
 
 const register = asyncHandler(async (req, res) => {
-  const { user, tokens } = await authService.register(req.body);
+  const { user, tokens } = await authService.register(req.body, env.frontendUrl);
   res.status(201).json({ success: true, data: { user, ...tokens } });
 });
 
@@ -38,4 +38,24 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Mot de passe réinitialisé avec succès.' });
 });
 
-module.exports = { register, login, refresh, logout, me, forgotPassword, resetPassword };
+const verifyEmail = asyncHandler(async (req, res) => {
+  await authService.verifyEmail(req.body.token);
+  res.status(200).json({ success: true, message: 'Email vérifié avec succès.' });
+});
+
+const resendVerification = asyncHandler(async (req, res) => {
+  await authService.resendVerification(req.user.id, env.frontendUrl);
+  res.status(200).json({ success: true, message: 'Email de vérification renvoyé.' });
+});
+
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await authService.updateProfile(req.user.id, req.body);
+  res.status(200).json({ success: true, data: user });
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+  await authService.changePassword(req.user.id, req.body.currentPassword, req.body.newPassword);
+  res.status(200).json({ success: true, message: 'Mot de passe modifié avec succès.' });
+});
+
+module.exports = { register, login, refresh, logout, me, forgotPassword, resetPassword, verifyEmail, resendVerification, updateProfile, changePassword };

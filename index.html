@@ -135,6 +135,7 @@
   .status-dot.on{background:var(--teal);}
   .status-dot.off{background:var(--text-muted);}
   .settings-form{max-width:480px;margin-top:20px;}
+  .filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 
   .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
   .video-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
@@ -305,6 +306,7 @@
       <div id="sidebar-backdrop" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;"></div>
       <aside class="sidebar" id="sidebar">
         <div class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg> Projets</div>
+        <div class="nav-item" data-view="profile"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20a7 7 0 0 1 14 0"/></svg> Mon profil</div>
         <div class="nav-item hidden" id="nav-clients" data-view="clients"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="3.2"/><path d="M22 20v-1a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15A3.2 3.2 0 0 1 17.2 7a3.2 3.2 0 0 1-1.9 2.93"/></svg> Clients</div>
         <div class="nav-section-label hidden" id="nav-admin-label">Administration</div>
         <div class="nav-item hidden" id="nav-settings" data-view="settings"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.3M12 18.7V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.3M18.7 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg> Paramètres</div>
@@ -318,9 +320,48 @@
           <h1>Mes projets</h1>
           <button class="btn btn-primary" id="new-project-btn">+ Nouveau projet</button>
         </div>
+        <div id="dashboard-filters" class="hidden" style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+          <button class="btn filter-btn active" data-filter="all">Tous</button>
+          <button class="btn filter-btn" data-filter="new">Nouveaux</button>
+          <button class="btn filter-btn" data-filter="review">En révision</button>
+          <button class="btn filter-btn" data-filter="waiting">Attente client</button>
+          <button class="btn filter-btn" data-filter="delivered">Livrés</button>
+        </div>
         <div id="projects-grid" class="grid"></div>
         <div id="projects-empty" class="empty-state hidden">
           Aucun projet pour l'instant.<br/><span style="font-size:13px">Cliquez sur « + Nouveau projet » pour démarrer votre première vidéo.</span>
+        </div>
+      </section>
+
+      <!-- MON PROFIL -->
+      <section id="view-profile" class="hidden">
+        <div class="page-head"><h1>Mon profil</h1></div>
+        <div id="email-verify-banner" class="hidden" style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);color:var(--amber);padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+          <span>Votre adresse email n'est pas encore vérifiée.</span>
+          <button class="btn" id="resend-verification-btn" style="padding:6px 12px;font-size:12px;">Renvoyer l'email</button>
+        </div>
+
+        <div class="settings-form">
+          <label>Prénom</label>
+          <input id="profile-firstName" />
+          <label>Nom</label>
+          <input id="profile-lastName" />
+          <label>Email</label>
+          <input id="profile-email" disabled style="opacity:.6" />
+          <label>Téléphone</label>
+          <input id="profile-phone" />
+          <label>Entreprise</label>
+          <input id="profile-company" />
+          <div class="save-row"><button class="btn btn-primary" id="save-profile-btn">Enregistrer</button></div>
+        </div>
+
+        <div class="settings-form" style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border);">
+          <h3 style="margin-top:0;font-size:15px;">Changer le mot de passe</h3>
+          <label>Mot de passe actuel</label>
+          <input type="password" id="current-password" />
+          <label>Nouveau mot de passe</label>
+          <input type="password" id="new-password" minlength="8" />
+          <div class="save-row"><button class="btn btn-primary" id="save-password-btn">Modifier le mot de passe</button></div>
         </div>
       </section>
 
@@ -615,7 +656,7 @@
   }
 
   // ---------- Sidebar navigation ----------
-  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail'];
+  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile'];
   function switchView(view){
     ALL_VIEWS.forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
@@ -631,6 +672,7 @@
       if (view === 'dashboard') showDashboard();
       else if (view === 'clients') showClients();
       else if (view === 'settings') showSettings();
+      else if (view === 'profile') showProfile();
       closeMobileSidebar();
     });
   });
@@ -769,6 +811,51 @@
     } catch(err){ toast(err.message, 'error'); }
   });
 
+  // ---------- Mon profil ----------
+  async function showProfile(){
+    switchView('profile');
+    document.getElementById('profile-firstName').value = state.user.firstName || '';
+    document.getElementById('profile-lastName').value = state.user.lastName || '';
+    document.getElementById('profile-email').value = state.user.email || '';
+    document.getElementById('profile-phone').value = state.user.phone || '';
+    document.getElementById('profile-company').value = state.user.company || '';
+    document.getElementById('email-verify-banner').classList.toggle('hidden', !!state.user.emailVerified);
+  }
+
+  document.getElementById('save-profile-btn').addEventListener('click', async () => {
+    try {
+      const user = await api('/auth/me', { method:'PUT', body: JSON.stringify({
+        firstName: document.getElementById('profile-firstName').value,
+        lastName: document.getElementById('profile-lastName').value,
+        phone: document.getElementById('profile-phone').value,
+        company: document.getElementById('profile-company').value,
+      })});
+      state.user = user;
+      localStorage.setItem('mls_user', JSON.stringify(user));
+      document.getElementById('user-email').textContent = user.firstName + ' (' + user.email + ')';
+      toast('Profil mis à jour.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  document.getElementById('save-password-btn').addEventListener('click', async () => {
+    const current = document.getElementById('current-password').value;
+    const next = document.getElementById('new-password').value;
+    if (!current || !next) { toast('Renseignez les deux champs.', 'error'); return; }
+    try {
+      await api('/auth/me/password', { method:'PUT', body: JSON.stringify({ currentPassword: current, newPassword: next }) });
+      document.getElementById('current-password').value = '';
+      document.getElementById('new-password').value = '';
+      toast('Mot de passe modifié.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  document.getElementById('resend-verification-btn').addEventListener('click', async () => {
+    try {
+      await api('/auth/resend-verification', { method:'POST' });
+      toast('Email de vérification renvoyé.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
   // ---------- Auth actions ----------
   document.querySelectorAll('.auth-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -870,18 +957,37 @@
   });
 
   // ---------- Dashboard ----------
+  let dashboardFilter = 'all';
+  const FILTER_STATUS_MAP = {
+    new: ['NEW', 'BRIEF_PENDING', 'BRIEF_VALIDATED'],
+    review: ['IN_PRODUCTION', 'IN_REVIEW'],
+    waiting: ['CLIENT_WAITING'],
+    delivered: ['READY_FOR_DELIVERY', 'DELIVERED'],
+  };
+
   async function loadProjects(){
     const grid = document.getElementById('projects-grid');
     const empty = document.getElementById('projects-empty');
     grid.innerHTML = '';
+    document.getElementById('dashboard-filters').classList.toggle('hidden', state.user.role === 'CLIENT');
     try {
       const projects = await api('/projects');
       state.projects = projects;
-      if (!projects.length) { empty.classList.remove('hidden'); return; }
+      const filtered = dashboardFilter === 'all' ? projects : projects.filter(p => (FILTER_STATUS_MAP[dashboardFilter]||[]).includes(p.status));
+      if (!filtered.length) { empty.classList.remove('hidden'); return; }
       empty.classList.add('hidden');
-      projects.forEach(p => grid.appendChild(renderProjectCard(p)));
+      filtered.forEach(p => grid.appendChild(renderProjectCard(p)));
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dashboardFilter = btn.dataset.filter;
+      loadProjects();
+    });
+  });
 
   function renderScrubber(steps, container){
     container.innerHTML = '';
@@ -1501,6 +1607,15 @@
 
   // ---------- Boot ----------
   (function boot(){
+    // Lien de vérification email : traité en tâche de fond puis on continue normalement
+    const verifyMatch = location.hash.match(/verify-email\/([^/]+)/);
+    if (verifyMatch) {
+      api('/auth/verify-email', { method:'POST', body: JSON.stringify({ token: verifyMatch[1] }) })
+        .then(() => toast('Email vérifié avec succès !'))
+        .catch(err => toast(err.message, 'error'))
+        .finally(() => { location.hash = ''; });
+    }
+
     // Lien de réinitialisation de mot de passe : prioritaire sur tout le reste
     if (location.hash.match(/reset-password\//)) {
       showAuth();

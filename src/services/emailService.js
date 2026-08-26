@@ -54,7 +54,7 @@ function wrapTemplate(title, bodyHtml) {
 }
 
 const templates = {
-  welcome: (firstName) => wrapTemplate('Bienvenue sur Malalaspace', `<p>Bonjour ${firstName},</p><p>Votre compte a été créé avec succès. Vous pouvez dès maintenant créer votre premier projet vidéo.</p>`),
+  welcome: (firstName, verifyUrl) => wrapTemplate('Bienvenue sur Malalaspace', `<p>Bonjour ${firstName},</p><p>Votre compte a été créé avec succès. Vous pouvez dès maintenant créer votre premier projet vidéo.</p>${verifyUrl ? `<p><a href="${verifyUrl}" style="color:#0A84FF">Cliquez ici pour confirmer votre adresse email</a>.</p>` : ''}`),
   resetPassword: (resetUrl) => wrapTemplate('Réinitialisation de mot de passe', `<p>Vous avez demandé la réinitialisation de votre mot de passe.</p><p><a href="${resetUrl}" style="color:#0A84FF">Cliquez ici pour choisir un nouveau mot de passe</a>. Ce lien expire dans 1 heure.</p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`),
   videoReady: (projectName, versionTitle) => wrapTemplate('Nouvelle vidéo disponible', `<p>Une nouvelle version de votre projet <strong>${projectName}</strong> est disponible : ${versionTitle}.</p><p>Connectez-vous à votre espace client pour la visionner.</p>`),
   briefValidated: (projectName) => wrapTemplate('Brief client validé', `<p>Le client a validé le brief du projet <strong>${projectName}</strong>.</p>`),

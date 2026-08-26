@@ -13,7 +13,7 @@ function sanitizeUser(user) {
   return safeUser;
 }
 
-async function register({ firstName, lastName, email, phone, company, password }) {
+async function register({ firstName, lastName, email, phone, company, password }, frontendUrl) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw ApiError.conflict('Un compte existe déjà avec cet email.');
@@ -35,13 +35,72 @@ async function register({ firstName, lastName, email, phone, company, password }
 
   const tokens = await tokenService.issueTokenPair(user);
 
+  const verifyUrl = await issueEmailVerificationLink(user, frontendUrl);
+
   emailService.sendEmail({
     to: user.email,
     subject: 'Bienvenue sur Malalaspace',
-    html: emailService.templates.welcome(user.firstName),
+    html: emailService.templates.welcome(user.firstName, verifyUrl),
   }).catch(() => {}); // best-effort, ne bloque jamais l'inscription
 
   return { user: sanitizeUser(user), tokens };
+}
+
+async function issueEmailVerificationLink(user, frontendUrl) {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  await prisma.emailVerificationToken.create({
+    data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+  });
+  return `${frontendUrl}/#/verify-email/${rawToken}`;
+}
+
+async function verifyEmail(rawToken) {
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const record = await prisma.emailVerificationToken.findFirst({ where: { tokenHash } });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    throw ApiError.badRequest('Lien de vérification invalide ou expiré.');
+  }
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { emailVerified: true } }),
+    prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+  ]);
+}
+
+async function resendVerification(userId, frontendUrl) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.emailVerified) return;
+  const verifyUrl = await issueEmailVerificationLink(user, frontendUrl);
+  emailService.sendEmail({
+    to: user.email,
+    subject: 'Confirmez votre adresse email',
+    html: emailService.templates.welcome(user.firstName, verifyUrl),
+  }).catch(() => {});
+}
+
+async function updateProfile(userId, data) {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      company: data.company,
+    },
+  });
+  return sanitizeUser(user);
+}
+
+async function changePassword(userId, currentPassword, newPassword) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw ApiError.badRequest('Mot de passe actuel incorrect.');
+  }
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  // Révoque toutes les autres sessions par sécurité (garde la session courante active jusqu'à expiration naturelle)
+  await prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
 async function login({ email, password }) {
@@ -124,4 +183,4 @@ async function resetPassword(rawToken, newPassword) {
   ]);
 }
 
-module.exports = { register, login, refresh, logout, getProfile, sanitizeUser, forgotPassword, resetPassword };
+module.exports = { register, login, refresh, logout, getProfile, sanitizeUser, forgotPassword, resetPassword, verifyEmail, resendVerification, updateProfile, changePassword };

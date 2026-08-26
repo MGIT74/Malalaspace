@@ -30,4 +30,29 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').max(100),
 });
 
-module.exports = { registerSchema, loginSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema };
+const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token requis'),
+});
+
+const updateProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  phone: z.string().max(30).optional(),
+  company: z.string().max(150).optional(),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+  newPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').max(100),
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  refreshSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  verifyEmailSchema,
+  updateProfileSchema,
+  changePasswordSchema,
+};
