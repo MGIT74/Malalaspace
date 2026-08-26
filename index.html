@@ -222,6 +222,14 @@
         <div class="tabs">
           <div class="tab active" data-settings-tab="integrations">Intégrations</div>
           <div class="tab" data-settings-tab="smtp">Email SMTP</div>
+          <div class="tab" data-settings-tab="users">Utilisateurs</div>
+        </div>
+
+        <div id="settings-tab-users" class="hidden">
+          <table>
+            <thead><tr><th>Nom</th><th>Email</th><th>Entreprise</th><th>Rôle</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
         </div>
 
         <div id="settings-tab-integrations">
@@ -519,11 +527,44 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-settings .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['integrations','smtp'].forEach(name => {
+      ['integrations','smtp','users'].forEach(name => {
         document.getElementById('settings-tab-' + name).classList.toggle('hidden', name !== tab.dataset.settingsTab);
       });
+      if (tab.dataset.settingsTab === 'users') loadUsersList();
     });
   });
+
+  async function loadUsersList(){
+    try {
+      const users = await api('/users');
+      const tbody = document.getElementById('users-tbody');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        const isSelf = state.user && state.user.id === u.id;
+        const roleCell = isSelf
+          ? `<span class="badge badge-DELIVERED">${u.role}</span> <span class="save-hint">(vous)</span>`
+          : `<select data-user-id="${u.id}" class="role-select" style="width:auto;display:inline-block;padding:6px 10px;">
+              <option value="CLIENT" ${u.role==='CLIENT'?'selected':''}>CLIENT</option>
+              <option value="EMPLOYEE" ${u.role==='EMPLOYEE'?'selected':''}>EMPLOYEE</option>
+              <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
+            </select>`;
+        tr.innerHTML = `<td>${escapeHtml(u.firstName + ' ' + u.lastName)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.company || '—')}</td><td>${roleCell}</td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('.role-select').forEach(select => {
+        select.addEventListener('change', async () => {
+          const userId = select.dataset.userId;
+          const newRole = select.value;
+          if (!confirm(`Changer le rôle de cet utilisateur en ${newRole} ?`)) { loadUsersList(); return; }
+          try {
+            await api('/users/' + userId + '/role', { method:'PUT', body: JSON.stringify({ role: newRole }) });
+            toast('Rôle mis à jour.');
+          } catch(err){ toast(err.message, 'error'); loadUsersList(); }
+        });
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
 
   document.getElementById('save-smtp-btn').addEventListener('click', async () => {
     try {
