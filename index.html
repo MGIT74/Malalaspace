@@ -232,6 +232,9 @@
         <label>Mot de passe</label>
         <input type="password" id="login-password" required autocomplete="current-password" />
         <button class="btn btn-primary auth-submit" type="submit">Se connecter</button>
+        <div style="text-align:center;margin-top:14px;">
+          <span class="save-hint" id="forgot-password-link" style="cursor:pointer;text-decoration:underline;">Mot de passe oublié ?</span>
+        </div>
       </form>
 
       <form id="register-form" class="hidden">
@@ -248,7 +251,25 @@
         <button class="btn btn-primary auth-submit" type="submit">Créer mon compte</button>
       </form>
 
+      <form id="forgot-form" class="hidden">
+        <p class="save-hint" style="margin-bottom:14px;">Indiquez votre email, un lien de réinitialisation vous sera envoyé s'il correspond à un compte existant.</p>
+        <label>Email</label>
+        <input type="email" id="forgot-email" required />
+        <button class="btn btn-primary auth-submit" type="submit">Envoyer le lien</button>
+        <div style="text-align:center;margin-top:14px;">
+          <span class="save-hint" id="back-to-login-link" style="cursor:pointer;text-decoration:underline;">← Retour à la connexion</span>
+        </div>
+      </form>
+
+      <form id="reset-form" class="hidden">
+        <p class="save-hint" style="margin-bottom:14px;">Choisissez votre nouveau mot de passe.</p>
+        <label>Nouveau mot de passe</label>
+        <input type="password" id="reset-password" required minlength="8" />
+        <button class="btn btn-primary auth-submit" type="submit">Réinitialiser</button>
+      </form>
+
       <div id="auth-error" class="error-box hidden"></div>
+      <div id="auth-success" class="hidden" style="background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.3);color:var(--teal);padding:10px 12px;border-radius:7px;font-size:13px;margin-top:14px;"></div>
     </div>
   </div>
 
@@ -367,6 +388,7 @@
             <div id="detail-company" style="color:var(--text-muted);font-size:14px;"></div>
           </div>
           <span id="detail-badge" class="badge"></span>
+          <button class="btn hidden" id="delete-project-btn" style="color:var(--danger);border-color:var(--danger-dim);">Supprimer</button>
         </div>
 
         <div class="scrubber" id="detail-scrubber"></div>
@@ -473,6 +495,10 @@
             </div>
           </div>
           <div class="steps-list" id="steps-list"></div>
+          <div id="add-step-wrap" class="hidden" style="margin-top:16px;display:flex;gap:8px;">
+            <input type="text" id="new-step-name" placeholder="Nom de la nouvelle étape..." style="flex:1" />
+            <button class="btn" id="add-step-btn">+ Ajouter une étape</button>
+          </div>
         </div>
 
         <!-- Notes internes tab (équipe uniquement) -->
@@ -496,6 +522,10 @@
   <div class="modal">
     <h2>Nouveau projet</h2>
     <form id="new-project-form">
+      <div id="np-client-wrap" class="hidden">
+        <label>Client *</label>
+        <select id="np-clientId"></select>
+      </div>
       <label>Nom du projet *</label>
       <input id="np-name" required placeholder="ex: Vidéo présentation SaaS" />
       <label>Nom de l'entreprise</label>
@@ -781,6 +811,46 @@
     } catch (err) { showAuthError(err.message); }
   });
 
+  // ---------- Forgot / reset password ----------
+  function showAuthForm(id){
+    ['login-form','register-form','forgot-form','reset-form'].forEach(f => {
+      document.getElementById(f).classList.toggle('hidden', f !== id);
+    });
+    document.getElementById('auth-error').classList.add('hidden');
+    document.getElementById('auth-success').classList.add('hidden');
+    document.querySelector('.auth-tabs').classList.toggle('hidden', id === 'forgot-form' || id === 'reset-form');
+  }
+
+  document.getElementById('forgot-password-link').addEventListener('click', () => showAuthForm('forgot-form'));
+  document.getElementById('back-to-login-link').addEventListener('click', () => showAuthForm('login-form'));
+
+  document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api('/auth/forgot-password', { method:'POST', body: JSON.stringify({ email: document.getElementById('forgot-email').value }) });
+      const successEl = document.getElementById('auth-success');
+      successEl.textContent = res.message || 'Si un compte existe, un email a été envoyé.';
+      successEl.classList.remove('hidden');
+    } catch (err) { showAuthError(err.message); }
+  });
+
+  document.getElementById('reset-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const match = location.hash.match(/reset-password\/([^/]+)/);
+    if (!match) { showAuthError('Lien de réinitialisation invalide.'); return; }
+    try {
+      await api('/auth/reset-password', { method:'POST', body: JSON.stringify({
+        token: match[1],
+        newPassword: document.getElementById('reset-password').value,
+      })});
+      location.hash = '';
+      showAuthForm('login-form');
+      const successEl = document.getElementById('auth-success');
+      successEl.textContent = 'Mot de passe réinitialisé. Connectez-vous.';
+      successEl.classList.remove('hidden');
+    } catch (err) { showAuthError(err.message); }
+  });
+
   function onAuthSuccess(data){
     tokens.set(data.accessToken, data.refreshToken);
     state.user = data.user;
@@ -848,22 +918,40 @@
 
   // ---------- New project modal ----------
   const overlay = document.getElementById('new-project-overlay');
-  document.getElementById('new-project-btn').addEventListener('click', () => overlay.classList.remove('hidden'));
+  document.getElementById('new-project-btn').addEventListener('click', async () => {
+    if (state.user.role === 'ADMIN') {
+      document.getElementById('np-client-wrap').classList.remove('hidden');
+      try {
+        const clients = await api('/users/clients');
+        document.getElementById('np-clientId').innerHTML = clients.map(c => `<option value="${c.id}">${escapeHtml(c.firstName+' '+c.lastName)} (${escapeHtml(c.email)})</option>`).join('');
+      } catch(err){ toast(err.message, 'error'); }
+    }
+    overlay.classList.remove('hidden');
+  });
   document.getElementById('np-cancel').addEventListener('click', () => overlay.classList.add('hidden'));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
 
   document.getElementById('new-project-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-      const project = await api('/projects', { method:'POST', body: JSON.stringify({
+      const payload = {
         name: document.getElementById('np-name').value,
         companyName: document.getElementById('np-companyName').value || undefined,
         website: document.getElementById('np-website').value || undefined,
         industry: document.getElementById('np-industry').value || undefined,
         saasDesc: document.getElementById('np-saasDesc').value || undefined,
-      })});
+      };
+      let project;
+      if (state.user.role === 'ADMIN') {
+        const clientId = document.getElementById('np-clientId').value;
+        if (!clientId) { toast('Sélectionnez un client.', 'error'); return; }
+        project = await api('/projects/admin', { method:'POST', body: JSON.stringify(Object.assign(payload, { clientId: Number(clientId) })) });
+      } else {
+        project = await api('/projects', { method:'POST', body: JSON.stringify(payload) });
+      }
       overlay.classList.add('hidden');
       e.target.reset();
+      document.getElementById('np-client-wrap').classList.add('hidden');
       toast('Projet créé !');
       showDetail(project.id);
     } catch(err){ toast(err.message, 'error'); }
@@ -903,7 +991,10 @@
       const isTeam = state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE';
       document.getElementById('notes-tab-btn').classList.toggle('hidden', !isTeam);
       const assignWrap = document.getElementById('assign-wrap');
-      if (state.user.role === 'ADMIN') {
+      const isAdmin = state.user.role === 'ADMIN';
+      document.getElementById('delete-project-btn').classList.toggle('hidden', !isAdmin);
+      document.getElementById('add-step-wrap').classList.toggle('hidden', !isAdmin);
+      if (isAdmin) {
         assignWrap.classList.remove('hidden');
         await populateEmployeeSelect(p.assignedUserId);
       } else {
@@ -926,20 +1017,62 @@
       // steps tab
       const stepsList = document.getElementById('steps-list');
       stepsList.innerHTML = '';
+      const canManageSteps = state.user.role === 'ADMIN' || (state.user.role === 'EMPLOYEE' && p.assignedUserId === state.user.id);
       (p.steps || []).forEach((s, i) => {
         const row = document.createElement('div');
         row.className = 'step-row';
         row.innerHTML = `<span class="step-idx mono">${String(i+1).padStart(2,'0')}</span>
           <span class="step-dot ${s.status==='DONE'?'done':s.status==='IN_PROGRESS'?'current':''}"></span>
           <span style="flex:1">${escapeHtml(s.name)}</span>
-          <span style="color:var(--text-muted)">${STEP_LABELS_STATUS[s.status] || s.status}</span>`;
+          <span class="${canManageSteps?'comment-status':''}" style="${canManageSteps?'':'color:var(--text-muted)'}" data-step-id="${s.id}">${STEP_LABELS_STATUS[s.status] || s.status}</span>
+          ${isAdmin ? `<button class="btn-ghost" data-delete-step="${s.id}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0 4px;" title="Supprimer l'étape">×</button>` : ''}`;
         stepsList.appendChild(row);
+
+        if (canManageSteps) {
+          row.querySelector('[data-step-id]').addEventListener('click', async () => {
+            const order = ['UPCOMING','IN_PROGRESS','DONE','BLOCKED'];
+            const next = order[(order.indexOf(s.status) + 1) % order.length];
+            try {
+              await api('/projects/' + id + '/steps/' + s.id, { method:'PATCH', body: JSON.stringify({ status: next }) });
+              loadProjectDetail(id);
+            } catch(err){ toast(err.message, 'error'); }
+          });
+        }
+        const delBtn = row.querySelector('[data-delete-step]');
+        if (delBtn) {
+          delBtn.addEventListener('click', async () => {
+            if (!confirm('Supprimer cette étape ?')) return;
+            try {
+              await api('/projects/' + id + '/steps/' + s.id, { method:'DELETE' });
+              loadProjectDetail(id);
+            } catch(err){ toast(err.message, 'error'); }
+          });
+        }
       });
 
       await loadFiles(id);
       await loadVideos(id);
     } catch(err){ toast(err.message, 'error'); showDashboard(); }
   }
+
+  document.getElementById('delete-project-btn').addEventListener('click', async () => {
+    if (!confirm('Supprimer définitivement ce projet et toutes ses données (fichiers, vidéos, commentaires) ? Cette action est irréversible.')) return;
+    try {
+      await api('/projects/' + state.currentProject.id, { method:'DELETE' });
+      toast('Projet supprimé.');
+      showDashboard();
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  document.getElementById('add-step-btn').addEventListener('click', async () => {
+    const input = document.getElementById('new-step-name');
+    if (!input.value.trim()) return;
+    try {
+      await api('/projects/' + state.currentProject.id + '/steps', { method:'POST', body: JSON.stringify({ name: input.value }) });
+      input.value = '';
+      loadProjectDetail(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   function collectBriefForm(){
     return {
@@ -971,6 +1104,25 @@
       toast('Brief validé !');
       loadProjectDetail(state.currentProject.id);
     } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Auto-sauvegarde du brief (brouillon, débouncée) ----------
+  let briefAutoSaveTimer = null;
+  const BRIEF_FIELD_IDS = ['brief-objective','brief-targetAudience','brief-mainMessage','brief-callToAction','brief-tone','brief-duration','brief-format','brief-platform','brief-script'];
+  BRIEF_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      clearTimeout(briefAutoSaveTimer);
+      document.getElementById('brief-save-hint').textContent = 'Modification en cours...';
+      briefAutoSaveTimer = setTimeout(async () => {
+        if (!state.currentProject) return;
+        try {
+          const body = Object.assign(collectBriefForm(), { isDraft: true });
+          await api('/projects/' + state.currentProject.id + '/brief', { method:'PUT', body: JSON.stringify(body) });
+          document.getElementById('brief-save-hint').textContent = 'Enregistré automatiquement à ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+        } catch(err){ /* échec silencieux, l'utilisateur peut toujours cliquer "Enregistrer le brouillon" */ }
+      }, 2000);
+    });
   });
 
   // ---------- Assets ----------
@@ -1349,6 +1501,13 @@
 
   // ---------- Boot ----------
   (function boot(){
+    // Lien de réinitialisation de mot de passe : prioritaire sur tout le reste
+    if (location.hash.match(/reset-password\//)) {
+      showAuth();
+      showAuthForm('reset-form');
+      return;
+    }
+
     const savedUser = localStorage.getItem('mls_user');
     if (tokens.access && savedUser) {
       state.user = JSON.parse(savedUser);
