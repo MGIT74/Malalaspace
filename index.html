@@ -134,6 +134,26 @@
   .status-dot.on{background:var(--teal);}
   .status-dot.off{background:var(--text-muted);}
   .settings-form{max-width:480px;margin-top:20px;}
+
+  .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
+  .video-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .video-card-head h4{margin:0;font-size:15px;}
+  .video-meta{font-size:12px;color:var(--text-muted);margin-bottom:10px;}
+  .video-link{color:var(--accent);font-size:13px;text-decoration:none;}
+  .video-link:hover{text-decoration:underline;}
+  .validated-tag{font-size:11px;color:var(--teal);font-weight:600;}
+
+  .comment-list{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+  .comment-item{padding:8px 0;font-size:13px;border-bottom:1px solid var(--border);}
+  .comment-item:last-child{border-bottom:none;}
+  .comment-head{display:flex;gap:8px;align-items:center;color:var(--text-muted);font-size:12px;margin-bottom:3px;}
+  .comment-timecode{font-family:'IBM Plex Mono',monospace;background:var(--surface-alt);padding:1px 6px;border-radius:4px;color:var(--accent);}
+  .comment-status{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface-alt);color:var(--text-muted);cursor:pointer;}
+  .comment-status.RESOLVED{color:var(--teal);}
+  .comment-status.IN_PROGRESS{color:var(--amber);}
+  .comment-form{display:flex;gap:8px;margin-top:10px;}
+  .comment-form input[type=text]{flex:1;}
+  .comment-form input.timecode-input{width:90px;flex:none;}
 </style>
 </head>
 <body>
@@ -273,6 +293,7 @@
 
         <div class="tabs">
           <div class="tab active" data-tab="brief">Brief</div>
+          <div class="tab" data-tab="videos">Vidéos</div>
           <div class="tab" data-tab="assets">Assets</div>
           <div class="tab" data-tab="steps">Production</div>
         </div>
@@ -324,6 +345,25 @@
             <button class="btn btn-primary" id="submit-brief-btn">Valider le brief</button>
             <span class="save-hint" id="brief-save-hint"></span>
           </div>
+        </div>
+
+        <!-- Videos tab -->
+        <div id="tab-videos" class="hidden">
+          <div id="add-video-form-wrap" class="hidden" style="margin-bottom:24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+            <label>URL de la vidéo (Google Drive, Vimeo...)</label>
+            <input id="video-url" placeholder="https://..." />
+            <div class="field-row">
+              <div><label>Titre de la version</label><input id="video-title" placeholder="ex: Première proposition" /></div>
+              <div><label>Description</label><input id="video-description" /></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+              <input type="checkbox" id="video-isfinal" style="width:auto" /> Version finale
+            </label>
+            <div class="save-row"><button class="btn btn-primary" id="add-video-btn">Ajouter la vidéo</button></div>
+          </div>
+          <button class="btn" id="show-add-video-btn">+ Ajouter une vidéo</button>
+
+          <div id="video-versions-list" style="margin-top:20px;"></div>
         </div>
 
         <!-- Assets tab -->
@@ -716,7 +756,7 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-detail .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['brief','assets','steps'].forEach(name => {
+      ['brief','videos','assets','steps'].forEach(name => {
         document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
       });
     });
@@ -765,6 +805,7 @@
       });
 
       await loadFiles(id);
+      await loadVideos(id);
     } catch(err){ toast(err.message, 'error'); showDashboard(); }
   }
 
@@ -840,6 +881,132 @@
       toast('Fichier ajouté.');
       loadFiles(state.currentProject.id);
     } catch(err){ toast(err.message, 'error'); }
+  }
+
+  // ---------- Videos & comments ----------
+  const canManageVideos = () => state.user && (state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE');
+  const isClientOwner = (project) => state.user && state.user.role === 'CLIENT' && project.clientId === state.user.id;
+
+  document.getElementById('show-add-video-btn').addEventListener('click', () => {
+    document.getElementById('add-video-form-wrap').classList.toggle('hidden');
+  });
+
+  document.getElementById('add-video-btn').addEventListener('click', async () => {
+    try {
+      await api('/projects/' + state.currentProject.id + '/videos', { method:'POST', body: JSON.stringify({
+        videoUrl: document.getElementById('video-url').value,
+        title: document.getElementById('video-title').value,
+        description: document.getElementById('video-description').value || undefined,
+        isFinal: document.getElementById('video-isfinal').checked,
+      })});
+      document.getElementById('video-url').value = '';
+      document.getElementById('video-title').value = '';
+      document.getElementById('video-description').value = '';
+      document.getElementById('video-isfinal').checked = false;
+      document.getElementById('add-video-form-wrap').classList.add('hidden');
+      toast('Vidéo ajoutée.');
+      loadVideos(state.currentProject.id);
+      loadProjectDetail(state.currentProject.id); // rafraîchit statut/scrubber
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  async function loadVideos(projectId){
+    document.getElementById('show-add-video-btn').classList.toggle('hidden', !canManageVideos());
+    const listEl = document.getElementById('video-versions-list');
+    listEl.innerHTML = '';
+    try {
+      const [versions, comments] = await Promise.all([
+        api('/projects/' + projectId + '/videos'),
+        api('/projects/' + projectId + '/comments'),
+      ]);
+
+      if (!versions.length) {
+        listEl.innerHTML = '<div class="empty-state">Aucune vidéo ajoutée pour l\'instant.</div>';
+        return;
+      }
+
+      versions.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        const versionComments = comments.filter(c => c.videoVersionId === v.id);
+        card.innerHTML = `
+          <div class="video-card-head">
+            <h4>Version ${v.versionNumber} — ${escapeHtml(v.title)} ${v.isFinal ? '<span class="validated-tag">FINALE</span>' : ''}</h4>
+            ${v.validatedAt ? '<span class="validated-tag">✓ Validée</span>' : ''}
+          </div>
+          <div class="video-meta">Ajoutée le ${new Date(v.createdAt).toLocaleDateString('fr-FR')} par ${escapeHtml(v.author.firstName)}</div>
+          <a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">▶ Regarder la vidéo</a>
+          ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
+          <div class="comment-list" data-video-id="${v.id}"></div>
+          <div class="comment-form">
+            <input type="text" class="timecode-input mono" placeholder="00:18" data-tc-for="${v.id}" />
+            <input type="text" placeholder="Ajouter un commentaire..." data-comment-for="${v.id}" />
+            <button class="btn" data-send-for="${v.id}">Envoyer</button>
+          </div>
+        `;
+        listEl.appendChild(card);
+
+        const commentListEl = card.querySelector('.comment-list');
+        versionComments.forEach(c => commentListEl.appendChild(renderComment(c)));
+
+        const validateBtn = card.querySelector('.validate-btn');
+        if (validateBtn) {
+          validateBtn.addEventListener('click', async () => {
+            if (!confirm('Êtes-vous sûr de vouloir valider cette version ?')) return;
+            try {
+              await api('/projects/' + projectId + '/videos/' + v.id + '/validate', { method:'POST' });
+              toast('Version validée !');
+              loadVideos(projectId);
+              loadProjectDetail(projectId);
+            } catch(err){ toast(err.message, 'error'); }
+          });
+        }
+
+        card.querySelector('[data-send-for="' + v.id + '"]').addEventListener('click', async () => {
+          const commentInput = card.querySelector('[data-comment-for="' + v.id + '"]');
+          const tcInput = card.querySelector('[data-tc-for="' + v.id + '"]');
+          if (!commentInput.value.trim()) return;
+          try {
+            await api('/projects/' + projectId + '/comments', { method:'POST', body: JSON.stringify({
+              content: commentInput.value,
+              timecode: tcInput.value || undefined,
+              videoVersionId: v.id,
+            })});
+            commentInput.value = '';
+            tcInput.value = '';
+            loadVideos(projectId);
+          } catch(err){ toast(err.message, 'error'); }
+        });
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  const COMMENT_STATUS_LABELS = { TO_HANDLE:'À traiter', IN_PROGRESS:'En cours', RESOLVED:'Résolu' };
+
+  function renderComment(c){
+    const el = document.createElement('div');
+    el.className = 'comment-item';
+    el.innerHTML = `
+      <div class="comment-head">
+        <strong style="color:var(--text)">${escapeHtml(c.user.firstName)}</strong>
+        ${c.timecode ? `<span class="comment-timecode">${escapeHtml(c.timecode)}</span>` : ''}
+        <span>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</span>
+        <span class="comment-status ${c.status}" data-comment-id="${c.id}">${COMMENT_STATUS_LABELS[c.status]}</span>
+      </div>
+      <div>${escapeHtml(c.content)}</div>
+    `;
+    if (canManageVideos()) {
+      const statusEl = el.querySelector('.comment-status');
+      statusEl.addEventListener('click', async () => {
+        const order = ['TO_HANDLE','IN_PROGRESS','RESOLVED'];
+        const next = order[(order.indexOf(c.status) + 1) % order.length];
+        try {
+          await api('/projects/' + state.currentProject.id + '/comments/' + c.id + '/status', { method:'PATCH', body: JSON.stringify({ status: next }) });
+          loadVideos(state.currentProject.id);
+        } catch(err){ toast(err.message, 'error'); }
+      });
+    }
+    return el;
   }
 
   // ---------- Boot ----------

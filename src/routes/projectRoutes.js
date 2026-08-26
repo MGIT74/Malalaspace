@@ -2,12 +2,18 @@ const express = require('express');
 const projectController = require('../controllers/projectController');
 const briefController = require('../controllers/briefController');
 const fileController = require('../controllers/fileController');
+const videoController = require('../controllers/videoController');
+const commentController = require('../controllers/commentController');
+const stepController = require('../controllers/stepController');
 const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
 const loadProject = require('../middleware/loadProject');
 const upload = require('../middleware/upload');
 const { createProjectSchema } = require('../validators/projectValidator');
 const { upsertBriefSchema } = require('../validators/briefValidator');
+const { createVideoSchema } = require('../validators/videoValidator');
+const { createCommentSchema, updateCommentStatusSchema } = require('../validators/commentValidator');
+const { updateStepSchema } = require('../validators/stepValidator');
 
 const router = express.Router();
 
@@ -21,12 +27,20 @@ router.get('/:id', projectController.getById);
 router.get('/:id/brief', briefController.getBrief);
 router.put('/:id/brief', validate(upsertBriefSchema), briefController.upsertBrief);
 
-// loadProject vérifie l'accès une seule fois puis attache req.project pour ces 4 routes
+// loadProject vérifie l'accès une seule fois puis attache req.project pour toutes ces routes
 router.post('/:id/files', loadProject, upload.single('file'), fileController.upload);
 router.get('/:id/files', loadProject, fileController.list);
 router.get('/:id/files/:fileId/download', loadProject, fileController.download);
 router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 
-// Phase 2: router.get('/:id/videos', ...), router.post('/:id/comments', ...), etc.
+router.get('/:id/videos', loadProject, videoController.list);
+router.post('/:id/videos', loadProject, validate(createVideoSchema), videoController.create);
+router.post('/:id/videos/:videoId/validate', loadProject, videoController.validate);
+
+router.get('/:id/comments', loadProject, commentController.list);
+router.post('/:id/comments', loadProject, validate(createCommentSchema), commentController.create);
+router.patch('/:id/comments/:commentId/status', loadProject, validate(updateCommentStatusSchema), commentController.updateStatus);
+
+router.patch('/:id/steps/:stepId', loadProject, validate(updateStepSchema), stepController.update);
 
 module.exports = router;
