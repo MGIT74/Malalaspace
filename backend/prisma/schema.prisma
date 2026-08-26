@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  EMPLOYEE
+  ADMIN
+}
+
+enum ProjectStatus {
+  NEW
+  BRIEF_PENDING
+  BRIEF_VALIDATED
+  IN_PRODUCTION
+  IN_REVIEW
+  CLIENT_WAITING
+  READY_FOR_DELIVERY
+  DELIVERED
+}
+
+enum StepStatus {
+  UPCOMING
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum CommentStatus {
+  TO_HANDLE
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum PaymentType {
+  DEPOSIT
+  BALANCE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  phone         String?
+  company       String?
+  role          Role     @default(CLIENT)
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  projectsAsClient   Project[]      @relation("ClientProjects")
+  projectsAssigned   Project[]      @relation("AssignedProjects")
+  files              File[]
+  videoVersions      VideoVersion[]
+  comments           Comment[]
+  notifications      Notification[]
+  internalNotes      InternalNote[]
+  refreshTokens      RefreshToken[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Project {
+  id             Int           @id @default(autoincrement())
+  clientId       Int           @map("client_id")
+  assignedUserId Int?          @map("assigned_user_id")
+  name           String
+  companyName    String?       @map("company_name")
+  website        String?
+  industry       String?
+  companyDesc    String?       @db.Text @map("company_description")
+  saasDesc       String?       @db.Text @map("saas_description")
+  problemSolved  String?       @db.Text @map("problem_solved")
+  targetAudience String?       @db.Text @map("target_audience")
+  description    String?       @db.Text
+  status         ProjectStatus @default(NEW)
+  progress       Int           @default(0)
+  deadline       DateTime?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  client       User           @relation("ClientProjects", fields: [clientId], references: [id])
+  assignedUser User?          @relation("AssignedProjects", fields: [assignedUserId], references: [id])
+  brief        ProjectBrief?
+  brandAsset   BrandAsset?
+  files        File[]
+  steps        ProjectStep[]
+  videoVersions VideoVersion[]
+  comments     Comment[]
+  payments     Payment[]
+  notifications Notification[]
+  internalNotes InternalNote[]
+
+  @@index([clientId])
+  @@index([assignedUserId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectBrief {
+  id                Int      @id @default(autoincrement())
+  projectId         Int      @unique @map("project_id")
+  objective         String?  @db.Text
+  targetAudience    String?  @db.Text @map("target_audience")
+  productDescription String? @db.Text @map("product_description")
+  mainMessage       String?  @db.Text @map("main_message")
+  callToAction      String?  @map("call_to_action")
+  tone              String?
+  duration          String?
+  platform          String?
+  format            String?
+  language          String?
+  script            String?  @db.LongText
+  isDraft           Boolean  @default(true) @map("is_draft")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_briefs")
+}
+
+model BrandAsset {
+  id             Int      @id @default(autoincrement())
+  projectId      Int      @unique @map("project_id")
+  primaryColor   String?  @map("primary_color")
+  secondaryColor String?  @map("secondary_color")
+  accentColor    String?  @map("accent_color")
+  primaryFont    String?  @map("primary_font")
+  secondaryFont  String?  @map("secondary_font")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("brand_assets")
+}
+
+model File {
+  id         Int      @id @default(autoincrement())
+  projectId  Int      @map("project_id")
+  uploadedBy Int      @map("uploaded_by")
+  fileName   String   @map("file_name")
+  fileUrl    String   @map("file_url") @db.Text
+  fileType   String   @map("file_type")
+  fileSize   Int      @map("file_size")
+  category   String?  // logo, brand_guide, asset, screenshot, etc.
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [uploadedBy], references: [id])
+
+  @@index([projectId])
+  @@map("files")
+}
+
+model ProjectStep {
+  id          Int        @id @default(autoincrement())
+  projectId   Int        @map("project_id")
+  name        String
+  description String?    @db.Text
+  status      StepStatus @default(UPCOMING)
+  progress    Int        @default(0)
+  order       Int
+  startedAt   DateTime?  @map("started_at")
+  completedAt DateTime?  @map("completed_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_steps")
+}
+
+model VideoVersion {
+  id            Int      @id @default(autoincrement())
+  projectId     Int      @map("project_id")
+  createdBy     Int      @map("created_by")
+  versionNumber Int      @map("version_number")
+  title         String
+  videoUrl      String   @map("video_url") @db.Text
+  description   String?  @db.Text
+  status        String   @default("pending")
+  isFinal       Boolean  @default(false) @map("is_final")
+  validatedAt   DateTime? @map("validated_at")
+  validatedBy   Int?     @map("validated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [createdBy], references: [id])
+  comments Comment[]
+
+  @@index([projectId])
+  @@map("video_versions")
+}
+
+model Comment {
+  id             Int           @id @default(autoincrement())
+  projectId      Int           @map("project_id")
+  videoVersionId Int?          @map("video_version_id")
+  userId         Int           @map("user_id")
+  parentCommentId Int?         @map("parent_comment_id")
+  content        String        @db.Text
+  timecode       String?
+  status         CommentStatus @default(TO_HANDLE)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  videoVersion VideoVersion? @relation(fields: [videoVersionId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id])
+  parent       Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies      Comment[]     @relation("CommentReplies")
+
+  @@index([projectId])
+  @@index([videoVersionId])
+  @@map("comments")
+}
+
+model Payment {
+  id               Int           @id @default(autoincrement())
+  projectId        Int           @map("project_id")
+  stripePaymentId  String?       @map("stripe_payment_id")
+  stripeCustomerId String?       @map("stripe_customer_id")
+  stripeEventId    String?       @unique @map("stripe_event_id")
+  amount           Int           // en centimes
+  currency         String        @default("eur")
+  type             PaymentType
+  status           PaymentStatus @default(PENDING)
+  paidAt           DateTime?     @map("paid_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("payments")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  projectId Int?      @map("project_id")
+  type      String
+  title     String
+  message   String    @db.Text
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([projectId])
+  @@map("internal_notes")
+}
