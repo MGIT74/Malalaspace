@@ -7,6 +7,8 @@ const {
   registerSchema,
   loginSchema,
   refreshSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } = require('../validators/authValidator');
 
 const router = express.Router();
@@ -16,5 +18,7 @@ router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/logout', validate(refreshSchema), authController.logout);
 router.get('/me', authenticate, authController.me);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
 module.exports = router;

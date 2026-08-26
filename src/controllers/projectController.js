@@ -21,4 +21,15 @@ const assign = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: project });
 });
 
-module.exports = { list, create, getById, assign };
+const createForClient = asyncHandler(async (req, res) => {
+  const { clientId, ...data } = req.body;
+  const project = await projectService.createProjectForClient(req.user, clientId, data);
+  res.status(201).json({ success: true, data: project });
+});
+
+const remove = asyncHandler(async (req, res) => {
+  await projectService.deleteProject(req.user, req.params.id);
+  res.status(200).json({ success: true, message: 'Projet supprimé.' });
+});
+
+module.exports = { list, create, getById, assign, createForClient, remove };

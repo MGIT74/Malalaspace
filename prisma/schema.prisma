@@ -89,6 +89,18 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 model Project {
   id             Int           @id @default(autoincrement())
   clientId       Int           @map("client_id")

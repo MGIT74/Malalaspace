@@ -51,13 +51,31 @@ async function listProjects(user) {
 async function createProject(user, data) {
   if (user.role !== 'CLIENT') {
     // Seul un client crée un projet pour lui-même à ce stade (Phase 1).
-    // L'admin pourra créer un projet pour un client tiers en Phase 2.
+    // L'admin utilise createProjectForClient ci-dessous.
     throw ApiError.forbidden('Seul un client peut créer un projet.');
   }
 
+  return createProjectInternal(user.id, data);
+}
+
+/**
+ * Un admin crée un projet pour un client existant (ex: onboarding fait par téléphone).
+ */
+async function createProjectForClient(admin, clientId, data) {
+  if (admin.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  const client = await prisma.user.findUnique({ where: { id: Number(clientId) } });
+  if (!client || client.role !== 'CLIENT') {
+    throw ApiError.badRequest("L'utilisateur cible n'est pas un client.");
+  }
+  return createProjectInternal(client.id, data);
+}
+
+async function createProjectInternal(clientId, data) {
   const project = await prisma.project.create({
     data: {
-      clientId: user.id,
+      clientId,
       name: data.name,
       companyName: data.companyName || null,
       website: data.website || null,
@@ -80,6 +98,29 @@ async function createProject(user, data) {
   });
 
   return project;
+}
+
+/**
+ * Supprime un projet et toutes ses données associées (cascade DB). Réservé à l'admin.
+ * Les fichiers sur disque sont nettoyés au mieux (best-effort), une erreur de suppression
+ * de fichier n'empêche jamais la suppression du projet en base.
+ */
+async function deleteProject(user, projectId) {
+  if (user.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+
+  const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+  if (!project) {
+    throw ApiError.notFound('Projet introuvable.');
+  }
+
+  const files = await prisma.file.findMany({ where: { projectId: project.id } });
+  const storageService = require('./storageService');
+  const provider = storageService.getProvider();
+  await Promise.all(files.map((f) => provider.remove(f.fileUrl).catch(() => {})));
+
+  await prisma.project.delete({ where: { id: project.id } });
 }
 
 /**
@@ -144,4 +185,4 @@ async function assignProject(user, projectId, employeeId) {
   return project;
 }
 
-module.exports = { listProjects, createProject, getProjectForUser, scopeForUser, assignProject };
+module.exports = { listProjects, createProject, createProjectForClient, deleteProject, getProjectForUser, scopeForUser, assignProject };

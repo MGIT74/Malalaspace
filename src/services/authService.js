@@ -1,9 +1,12 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 const tokenService = require('./tokenService');
+const emailService = require('./emailService');
 
 const SALT_ROUNDS = 12;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 heure
 
 function sanitizeUser(user) {
   const { passwordHash, ...safeUser } = user;
@@ -32,7 +35,11 @@ async function register({ firstName, lastName, email, phone, company, password }
 
   const tokens = await tokenService.issueTokenPair(user);
 
-  // TODO Phase 4: déclencher l'envoi de l'email de vérification via emailService
+  emailService.sendEmail({
+    to: user.email,
+    subject: 'Bienvenue sur Malalaspace',
+    html: emailService.templates.welcome(user.firstName),
+  }).catch(() => {}); // best-effort, ne bloque jamais l'inscription
 
   return { user: sanitizeUser(user), tokens };
 }
@@ -71,4 +78,50 @@ async function getProfile(userId) {
   return sanitizeUser(user);
 }
 
-module.exports = { register, login, refresh, logout, getProfile, sanitizeUser };
+/**
+ * Toujours répondre de façon générique (même si l'email n'existe pas) pour ne pas
+ * révéler quels emails sont enregistrés.
+ */
+async function forgotPassword(email, frontendUrl) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return; // silencieux, comportement volontaire
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash,
+      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+    },
+  });
+
+  const resetUrl = `${frontendUrl}/#/reset-password/${rawToken}`;
+
+  emailService.sendEmail({
+    to: user.email,
+    subject: 'Réinitialisation de votre mot de passe',
+    html: emailService.templates.resetPassword(resetUrl),
+  }).catch(() => {});
+}
+
+async function resetPassword(rawToken, newPassword) {
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  const resetToken = await prisma.passwordResetToken.findFirst({ where: { tokenHash } });
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    throw ApiError.badRequest('Lien de réinitialisation invalide ou expiré.');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { id: resetToken.id }, data: { usedAt: new Date() } }),
+    // Invalide toutes les sessions existantes par sécurité (l'utilisateur devra se reconnecter partout)
+    prisma.refreshToken.updateMany({ where: { userId: resetToken.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+}
+
+module.exports = { register, login, refresh, logout, getProfile, sanitizeUser, forgotPassword, resetPassword };

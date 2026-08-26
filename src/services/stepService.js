@@ -40,4 +40,35 @@ async function updateStep(user, project, stepId, data) {
   return updatedStep;
 }
 
-module.exports = { updateStep };
+/**
+ * Ajoute une étape personnalisée à la fin de la timeline. Réservé à l'admin
+ * (le cahier des charges précise que seul l'admin peut modifier la structure des étapes).
+ */
+async function addStep(user, project, name) {
+  if (user.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  const last = await prisma.projectStep.findFirst({ where: { projectId: project.id }, orderBy: { order: 'desc' } });
+  return prisma.projectStep.create({
+    data: { projectId: project.id, name, order: (last?.order ?? -1) + 1, status: 'UPCOMING', progress: 0 },
+  });
+}
+
+async function deleteStep(user, project, stepId) {
+  if (user.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  const step = await prisma.projectStep.findUnique({ where: { id: Number(stepId) } });
+  if (!step || step.projectId !== project.id) {
+    throw ApiError.notFound('Étape introuvable.');
+  }
+  await prisma.projectStep.delete({ where: { id: step.id } });
+
+  // Recalcule la progression globale après suppression d'une étape
+  const remaining = await prisma.projectStep.findMany({ where: { projectId: project.id } });
+  const doneCount = remaining.filter((s) => s.status === 'DONE').length;
+  const globalProgress = remaining.length ? Math.round((doneCount / remaining.length) * 100) : 0;
+  await prisma.project.update({ where: { id: project.id }, data: { progress: globalProgress } });
+}
+
+module.exports = { updateStep, addStep, deleteStep };

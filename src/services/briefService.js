@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const projectService = require('./projectService');
 const notificationService = require('./notificationService');
+const emailService = require('./emailService');
 const ApiError = require('../utils/apiError');
 
 /**
@@ -50,6 +51,17 @@ async function upsertBrief(user, projectId, data) {
       'Brief client validé',
       `Le client a validé le brief de "${project.name}".`
     );
+
+    if (project.assignedUserId) {
+      const employee = await prisma.user.findUnique({ where: { id: project.assignedUserId } });
+      if (employee) {
+        emailService.sendEmail({
+          to: employee.email,
+          subject: 'Brief client validé',
+          html: emailService.templates.briefValidated(project.name),
+        }).catch(() => {});
+      }
+    }
   }
 
   return brief;

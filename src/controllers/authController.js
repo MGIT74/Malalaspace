@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/authService');
+const env = require('../config/env');
 
 const register = asyncHandler(async (req, res) => {
   const { user, tokens } = await authService.register(req.body);
@@ -26,4 +27,15 @@ const me = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: user });
 });
 
-module.exports = { register, login, refresh, logout, me };
+const forgotPassword = asyncHandler(async (req, res) => {
+  await authService.forgotPassword(req.body.email, env.frontendUrl);
+  // Réponse toujours identique, qu'un compte existe ou non (anti-énumération)
+  res.status(200).json({ success: true, message: 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.' });
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  await authService.resetPassword(req.body.token, req.body.newPassword);
+  res.status(200).json({ success: true, message: 'Mot de passe réinitialisé avec succès.' });
+});
+
+module.exports = { register, login, refresh, logout, me, forgotPassword, resetPassword };

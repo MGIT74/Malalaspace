@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 const notificationService = require('./notificationService');
+const emailService = require('./emailService');
 
 function canManageVideos(user, project) {
   return user.role === 'ADMIN' || (user.role === 'EMPLOYEE' && project.assignedUserId === user.id);
@@ -52,6 +53,15 @@ async function createVersion(user, project, data) {
     `Une nouvelle version de "${project.name}" est disponible : ${data.title}.`
   );
 
+  const clientUser = await prisma.user.findUnique({ where: { id: project.clientId } });
+  if (clientUser) {
+    emailService.sendEmail({
+      to: clientUser.email,
+      subject: 'Nouvelle vidéo disponible',
+      html: emailService.templates.videoReady(project.name, data.title),
+    }).catch(() => {});
+  }
+
   return version;
 }
 
@@ -88,6 +98,17 @@ async function validateVersion(user, project, videoId) {
     'Version validée par le client',
     `Le client a validé la version "${version.title}" de "${project.name}".`
   );
+
+  if (project.assignedUserId) {
+    const employee = await prisma.user.findUnique({ where: { id: project.assignedUserId } });
+    if (employee) {
+      emailService.sendEmail({
+        to: employee.email,
+        subject: 'Version validée par le client',
+        html: emailService.templates.validation(project.name, version.title),
+      }).catch(() => {});
+    }
+  }
 
   return updated;
 }
