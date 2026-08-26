@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Malalaspace — Portail client</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15171C;
+    --surface:#1E2129;
+    --surface-alt:#262A34;
+    --border:#2E323C;
+    --text:#F2F0EA;
+    --text-muted:#8B90A0;
+    --accent:#FF4B5C;
+    --accent-dim:#5A2530;
+    --teal:#33D6A6;
+    --amber:#F5B942;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.brand{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;letter-spacing:0.02em;}
+  a{color:inherit}
+  button{font-family:inherit}
+  ::selection{background:var(--accent);color:#fff}
+
+  /* ---------- Layout shells ---------- */
+  #app{min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);}
+  .brand{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .brand-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);}
+  .user-chip{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--text-muted);}
+  .btn{border:1px solid var(--border);background:var(--surface-alt);color:var(--text);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:.15s;}
+  .btn:hover{border-color:#454b59;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#ff3850;}
+  .btn-ghost{background:transparent;border:none;color:var(--text-muted);}
+  .btn-ghost:hover{color:var(--text);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  main{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:40px 32px 80px;}
+  .hidden{display:none !important;}
+
+  /* ---------- Auth ---------- */
+  #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .auth-card{width:380px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px;}
+  .auth-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface-alt);padding:4px;border-radius:8px;}
+  .auth-tab{flex:1;text-align:center;padding:8px;border-radius:6px;font-size:14px;cursor:pointer;color:var(--text-muted);}
+  .auth-tab.active{background:var(--ink);color:var(--text);}
+  label{display:block;font-size:13px;color:var(--text-muted);margin:14px 0 6px;}
+  input,select,textarea{width:100%;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:7px;font-size:14px;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .error-box{background:rgba(255,75,92,.12);border:1px solid var(--accent-dim);color:#ff9aa4;padding:10px 12px;border-radius:7px;font-size:13px;margin-top:14px;}
+  .auth-submit{width:100%;margin-top:22px;padding:11px;}
+
+  /* ---------- Dashboard ---------- */
+  .page-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+  .page-head h1{font-size:26px;margin:0;}
+  .empty-state{border:1px dashed var(--border);border-radius:var(--radius);padding:60px 20px;text-align:center;color:var(--text-muted);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:.15s;}
+  .card:hover{border-color:#454b59;transform:translateY(-1px);}
+  .card h3{margin:0 0 4px;font-size:16px;}
+  .card .company{font-size:13px;color:var(--text-muted);margin-bottom:14px;}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
+  .badge-NEW{background:#2c3040;color:#9aa4c7;}
+  .badge-BRIEF_PENDING,.badge-BRIEF_VALIDATED{background:rgba(245,185,66,.15);color:var(--amber);}
+  .badge-IN_PRODUCTION,.badge-IN_REVIEW{background:rgba(255,75,92,.15);color:var(--accent);}
+  .badge-CLIENT_WAITING{background:rgba(255,75,92,.15);color:var(--accent);}
+  .badge-READY_FOR_DELIVERY,.badge-DELIVERED{background:rgba(51,214,166,.15);color:var(--teal);}
+
+  /* Timeline scrubber — signature element, evoque une timeline de montage vidéo */
+  .scrubber{display:flex;align-items:center;gap:3px;margin:16px 0 8px;}
+  .scrub-step{flex:1;height:4px;border-radius:2px;background:var(--border);position:relative;}
+  .scrub-step.done{background:var(--teal);}
+  .scrub-step.current{background:var(--accent);}
+  .scrub-step.current::after{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--accent);}
+  .scrub-label{font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(10,11,14,.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;padding:28px;}
+  .modal h2{margin-top:0;font-size:19px;}
+
+  /* ---------- Project detail ---------- */
+  .back-link{color:var(--text-muted);font-size:13px;cursor:pointer;margin-bottom:18px;display:inline-block;}
+  .back-link:hover{color:var(--text);}
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:28px 0 24px;}
+  .tab{padding:10px 4px;margin-right:20px;color:var(--text-muted);cursor:pointer;font-size:14px;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--text);border-color:var(--accent);}
+
+  .steps-list{display:flex;flex-direction:column;gap:2px;margin-top:10px;}
+  .step-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .step-idx{width:20px;color:var(--text-muted);}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
+  .step-dot.done{background:var(--teal);}
+  .step-dot.current{background:var(--accent);}
+
+  .save-row{display:flex;gap:10px;margin-top:24px;align-items:center;}
+  .save-hint{font-size:12px;color:var(--text-muted);}
+
+  .dropzone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;color:var(--text-muted);cursor:pointer;transition:.15s;}
+  .dropzone.drag{border-color:var(--accent);color:var(--text);background:rgba(255,75,92,.05);}
+  .file-input{display:none;}
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:13px;}
+  th{text-align:left;color:var(--text-muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--border);}
+  td{padding:10px;border-bottom:1px solid var(--border);}
+  tr:last-child td{border-bottom:none;}
+  .file-actions a, .file-actions button{margin-right:10px;font-size:12px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;}
+  .file-actions a:hover, .file-actions button:hover{color:var(--text);}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .toast.error{border-color:var(--accent-dim);color:#ff9aa4;}
+  .toast.success{border-color:rgba(51,214,166,.3);color:var(--teal);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- AUTH -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <div class="brand" style="margin-bottom:24px"><span class="brand-dot"></span> Malalaspace</div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="login">Connexion</div>
+        <div class="auth-tab" data-tab="register">Créer un compte</div>
+      </div>
+
+      <form id="login-form">
+        <label>Email</label>
+        <input type="email" id="login-email" required autocomplete="email" />
+        <label>Mot de passe</label>
+        <input type="password" id="login-password" required autocomplete="current-password" />
+        <button class="btn btn-primary auth-submit" type="submit">Se connecter</button>
+      </form>
+
+      <form id="register-form" class="hidden">
+        <div class="field-row">
+          <div><label>Prénom</label><input id="reg-firstName" required /></div>
+          <div><label>Nom</label><input id="reg-lastName" required /></div>
+        </div>
+        <label>Entreprise</label>
+        <input id="reg-company" />
+        <label>Email</label>
+        <input type="email" id="reg-email" required />
+        <label>Mot de passe</label>
+        <input type="password" id="reg-password" required minlength="8" />
+        <button class="btn btn-primary auth-submit" type="submit">Créer mon compte</button>
+      </form>
+
+      <div id="auth-error" class="error-box hidden"></div>
+    </div>
+  </div>
+
+  <!-- APP SHELL -->
+  <div id="app-shell" class="hidden">
+    <div class="topbar">
+      <div class="brand"><span class="brand-dot"></span> Malalaspace</div>
+      <div class="user-chip">
+        <span id="user-email"></span>
+        <button class="btn btn-ghost" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+
+    <main>
+      <!-- DASHBOARD -->
+      <section id="view-dashboard">
+        <div class="page-head">
+          <h1>Mes projets</h1>
+          <button class="btn btn-primary" id="new-project-btn">+ Nouveau projet</button>
+        </div>
+        <div id="projects-grid" class="grid"></div>
+        <div id="projects-empty" class="empty-state hidden">
+          Aucun projet pour l'instant.<br/><span style="font-size:13px">Cliquez sur « + Nouveau projet » pour démarrer votre première vidéo.</span>
+        </div>
+      </section>
+
+      <!-- PROJECT DETAIL -->
+      <section id="view-detail" class="hidden">
+        <span class="back-link" id="back-to-dashboard">← Tous les projets</span>
+        <div class="detail-head">
+          <div>
+            <h1 id="detail-name" style="margin:0 0 6px;font-size:24px;"></h1>
+            <div id="detail-company" style="color:var(--text-muted);font-size:14px;"></div>
+          </div>
+          <span id="detail-badge" class="badge"></span>
+        </div>
+
+        <div class="scrubber" id="detail-scrubber"></div>
+        <div class="scrub-label"><span id="detail-progress-label"></span><span id="detail-next-step"></span></div>
+
+        <div class="tabs">
+          <div class="tab active" data-tab="brief">Brief</div>
+          <div class="tab" data-tab="assets">Assets</div>
+          <div class="tab" data-tab="steps">Production</div>
+        </div>
+
+        <!-- Brief tab -->
+        <div id="tab-brief">
+          <div class="field-row">
+            <div>
+              <label>Objectif de la vidéo</label>
+              <textarea id="brief-objective" rows="2"></textarea>
+            </div>
+            <div>
+              <label>Public cible</label>
+              <textarea id="brief-targetAudience" rows="2"></textarea>
+            </div>
+          </div>
+          <label>Message principal</label>
+          <textarea id="brief-mainMessage" rows="2"></textarea>
+          <div class="field-row">
+            <div>
+              <label>Call-to-action</label>
+              <input id="brief-callToAction" />
+            </div>
+            <div>
+              <label>Ton souhaité</label>
+              <select id="brief-tone">
+                <option value="">—</option>
+                <option value="professionnel">Professionnel</option>
+                <option value="moderne">Moderne</option>
+                <option value="dynamique">Dynamique</option>
+                <option value="pédagogique">Pédagogique</option>
+                <option value="premium">Premium</option>
+                <option value="humoristique">Humoristique</option>
+                <option value="minimaliste">Minimaliste</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div><label>Durée souhaitée</label><input id="brief-duration" placeholder="ex: 45s" /></div>
+            <div><label>Format</label><input id="brief-format" placeholder="ex: 16:9" /></div>
+          </div>
+          <label>Plateforme de diffusion</label>
+          <input id="brief-platform" placeholder="ex: YouTube, LinkedIn" />
+          <label>Script</label>
+          <textarea id="brief-script" rows="6"></textarea>
+
+          <div class="save-row">
+            <button class="btn" id="save-draft-btn">Enregistrer le brouillon</button>
+            <button class="btn btn-primary" id="submit-brief-btn">Valider le brief</button>
+            <span class="save-hint" id="brief-save-hint"></span>
+          </div>
+        </div>
+
+        <!-- Assets tab -->
+        <div id="tab-assets" class="hidden">
+          <div class="dropzone" id="dropzone">
+            <div>Glissez-déposez un fichier ici, ou <u>cliquez pour parcourir</u></div>
+            <div style="font-size:12px;margin-top:6px;">Logos, images, vidéos, PDF, ZIP — jusqu'à 100 Mo</div>
+          </div>
+          <input type="file" class="file-input" id="file-input" />
+          <table id="files-table">
+            <thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Ajouté le</th><th></th></tr></thead>
+            <tbody id="files-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Steps tab -->
+        <div id="tab-steps" class="hidden">
+          <div class="steps-list" id="steps-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- New project modal -->
+<div class="overlay hidden" id="new-project-overlay">
+  <div class="modal">
+    <h2>Nouveau projet</h2>
+    <form id="new-project-form">
+      <label>Nom du projet *</label>
+      <input id="np-name" required placeholder="ex: Vidéo présentation SaaS" />
+      <label>Nom de l'entreprise</label>
+      <input id="np-companyName" />
+      <div class="field-row">
+        <div><label>Site web</label><input id="np-website" placeholder="https://" /></div>
+        <div><label>Secteur d'activité</label><input id="np-industry" placeholder="ex: SaaS B2B" /></div>
+      </div>
+      <label>Description du SaaS</label>
+      <textarea id="np-saasDesc" rows="3"></textarea>
+      <div class="save-row">
+        <button type="button" class="btn btn-ghost" id="np-cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer le projet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API = '/api';
+  const STEP_LABELS_STATUS = { UPCOMING:'À venir', IN_PROGRESS:'En cours', DONE:'Terminé', BLOCKED:'Bloqué' };
+  const PROJECT_STATUS_LABELS = {
+    NEW:'Nouveau', BRIEF_PENDING:'Brief à compléter', BRIEF_VALIDATED:'Brief validé',
+    IN_PRODUCTION:'En production', IN_REVIEW:'Révision', CLIENT_WAITING:'Attente client',
+    READY_FOR_DELIVERY:'Prêt pour livraison', DELIVERED:'Livré'
+  };
+
+  let state = { user: null, projects: [], currentProject: null };
+
+  // ---------- token storage ----------
+  const tokens = {
+    get access(){ return localStorage.getItem('mls_access'); },
+    get refresh(){ return localStorage.getItem('mls_refresh'); },
+    set(a,r){ localStorage.setItem('mls_access',a); localStorage.setItem('mls_refresh',r); },
+    clear(){ localStorage.removeItem('mls_access'); localStorage.removeItem('mls_refresh'); localStorage.removeItem('mls_user'); }
+  };
+
+  function toast(msg, type='success'){
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  // ---------- API wrapper avec refresh automatique ----------
+  async function api(path, options = {}, retry = true) {
+    const headers = Object.assign({}, options.headers || {});
+    if (!(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+    if (tokens.access) headers['Authorization'] = 'Bearer ' + tokens.access;
+
+    const res = await fetch(API + path, Object.assign({}, options, { headers }));
+
+    if (res.status === 401 && retry && tokens.refresh) {
+      const refreshed = await fetch(API + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: tokens.refresh })
+      });
+      if (refreshed.ok) {
+        const data = await refreshed.json();
+        tokens.set(data.data.accessToken, data.data.refreshToken);
+        return api(path, options, false);
+      } else {
+        tokens.clear();
+        showAuth();
+        throw new Error('Session expirée, reconnectez-vous.');
+      }
+    }
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      throw new Error(json.message || 'Une erreur est survenue.');
+    }
+    return json.data;
+  }
+
+  // ---------- Screens ----------
+  function showAuth(){
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('app-shell').classList.add('hidden');
+  }
+  function showApp(){
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('app-shell').classList.remove('hidden');
+  }
+
+  function showDashboard(){
+    state.currentProject = null;
+    document.getElementById('view-dashboard').classList.remove('hidden');
+    document.getElementById('view-detail').classList.add('hidden');
+    location.hash = '';
+    loadProjects();
+  }
+
+  async function showDetail(id){
+    document.getElementById('view-dashboard').classList.add('hidden');
+    document.getElementById('view-detail').classList.remove('hidden');
+    location.hash = 'project/' + id;
+    await loadProjectDetail(id);
+  }
+
+  // ---------- Auth actions ----------
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('login-form').classList.toggle('hidden', tab.dataset.tab !== 'login');
+      document.getElementById('register-form').classList.toggle('hidden', tab.dataset.tab !== 'register');
+      document.getElementById('auth-error').classList.add('hidden');
+    });
+  });
+
+  function showAuthError(msg){
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const data = await api('/auth/login', { method:'POST', body: JSON.stringify({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value
+      })});
+      onAuthSuccess(data);
+    } catch (err) { showAuthError(err.message); }
+  });
+
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const data = await api('/auth/register', { method:'POST', body: JSON.stringify({
+        firstName: document.getElementById('reg-firstName').value,
+        lastName: document.getElementById('reg-lastName').value,
+        company: document.getElementById('reg-company').value,
+        email: document.getElementById('reg-email').value,
+        password: document.getElementById('reg-password').value
+      })});
+      onAuthSuccess(data);
+    } catch (err) { showAuthError(err.message); }
+  });
+
+  function onAuthSuccess(data){
+    tokens.set(data.accessToken, data.refreshToken);
+    state.user = data.user;
+    localStorage.setItem('mls_user', JSON.stringify(data.user));
+    document.getElementById('user-email').textContent = data.user.firstName + ' (' + data.user.email + ')';
+    showApp();
+    showDashboard();
+  }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    try { await api('/auth/logout', { method:'POST', body: JSON.stringify({ refreshToken: tokens.refresh }) }); } catch(e){}
+    tokens.clear();
+    location.reload();
+  });
+
+  // ---------- Dashboard ----------
+  async function loadProjects(){
+    const grid = document.getElementById('projects-grid');
+    const empty = document.getElementById('projects-empty');
+    grid.innerHTML = '';
+    try {
+      const projects = await api('/projects');
+      state.projects = projects;
+      if (!projects.length) { empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      projects.forEach(p => grid.appendChild(renderProjectCard(p)));
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  function renderScrubber(steps, container){
+    container.innerHTML = '';
+    const total = steps.length || 1;
+    steps.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'scrub-step ' + (s.status === 'DONE' ? 'done' : s.status === 'IN_PROGRESS' ? 'current' : '');
+      el.style.flex = (1/total);
+      container.appendChild(el);
+    });
+  }
+
+  function renderProjectCard(p){
+    const card = document.createElement('div');
+    card.className = 'card';
+    const doneCount = (p.steps||[]).filter(s=>s.status==='DONE').length;
+    const currentStep = (p.steps||[]).find(s=>s.status==='IN_PROGRESS');
+    card.innerHTML = `
+      <h3>${escapeHtml(p.name)}</h3>
+      <div class="company">${escapeHtml(p.companyName || '—')}</div>
+      <span class="badge badge-${p.status}">${PROJECT_STATUS_LABELS[p.status] || p.status}</span>
+      <div class="scrubber"></div>
+      <div class="scrub-label"><span>${doneCount}/${(p.steps||[]).length || 13} étapes</span><span>${currentStep ? escapeHtml(currentStep.name) : ''}</span></div>
+    `;
+    renderScrubber(p.steps || [], card.querySelector('.scrubber'));
+    card.addEventListener('click', () => showDetail(p.id));
+    return card;
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // ---------- New project modal ----------
+  const overlay = document.getElementById('new-project-overlay');
+  document.getElementById('new-project-btn').addEventListener('click', () => overlay.classList.remove('hidden'));
+  document.getElementById('np-cancel').addEventListener('click', () => overlay.classList.add('hidden'));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+
+  document.getElementById('new-project-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const project = await api('/projects', { method:'POST', body: JSON.stringify({
+        name: document.getElementById('np-name').value,
+        companyName: document.getElementById('np-companyName').value || undefined,
+        website: document.getElementById('np-website').value || undefined,
+        industry: document.getElementById('np-industry').value || undefined,
+        saasDesc: document.getElementById('np-saasDesc').value || undefined,
+      })});
+      overlay.classList.add('hidden');
+      e.target.reset();
+      toast('Projet créé !');
+      showDetail(project.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Project detail ----------
+  document.getElementById('back-to-dashboard').addEventListener('click', showDashboard);
+
+  document.querySelectorAll('#view-detail .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#view-detail .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      ['brief','assets','steps'].forEach(name => {
+        document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
+      });
+    });
+  });
+
+  async function loadProjectDetail(id){
+    try {
+      const p = await api('/projects/' + id);
+      state.currentProject = p;
+      document.getElementById('detail-name').textContent = p.name;
+      document.getElementById('detail-company').textContent = p.companyName || '';
+      const badge = document.getElementById('detail-badge');
+      badge.className = 'badge badge-' + p.status;
+      badge.textContent = PROJECT_STATUS_LABELS[p.status] || p.status;
+
+      renderScrubber(p.steps || [], document.getElementById('detail-scrubber'));
+      const doneCount = (p.steps||[]).filter(s=>s.status==='DONE').length;
+      const currentStep = (p.steps||[]).find(s=>s.status==='IN_PROGRESS');
+      document.getElementById('detail-progress-label').textContent = `${doneCount}/${(p.steps||[]).length} étapes complétées`;
+      document.getElementById('detail-next-step').textContent = currentStep ? '→ ' + currentStep.name : '';
+
+      // brief
+      const b = p.brief || {};
+      document.getElementById('brief-objective').value = b.objective || '';
+      document.getElementById('brief-targetAudience').value = b.targetAudience || '';
+      document.getElementById('brief-mainMessage').value = b.mainMessage || '';
+      document.getElementById('brief-callToAction').value = b.callToAction || '';
+      document.getElementById('brief-tone').value = b.tone || '';
+      document.getElementById('brief-duration').value = b.duration || '';
+      document.getElementById('brief-format').value = b.format || '';
+      document.getElementById('brief-platform').value = b.platform || '';
+      document.getElementById('brief-script').value = b.script || '';
+      document.getElementById('brief-save-hint').textContent = b.isDraft === false ? 'Brief validé' : (b.updatedAt ? 'Brouillon enregistré' : '');
+
+      // steps tab
+      const stepsList = document.getElementById('steps-list');
+      stepsList.innerHTML = '';
+      (p.steps || []).forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'step-row';
+        row.innerHTML = `<span class="step-idx mono">${String(i+1).padStart(2,'0')}</span>
+          <span class="step-dot ${s.status==='DONE'?'done':s.status==='IN_PROGRESS'?'current':''}"></span>
+          <span style="flex:1">${escapeHtml(s.name)}</span>
+          <span style="color:var(--text-muted)">${STEP_LABELS_STATUS[s.status] || s.status}</span>`;
+        stepsList.appendChild(row);
+      });
+
+      await loadFiles(id);
+    } catch(err){ toast(err.message, 'error'); showDashboard(); }
+  }
+
+  function collectBriefForm(){
+    return {
+      objective: document.getElementById('brief-objective').value || undefined,
+      targetAudience: document.getElementById('brief-targetAudience').value || undefined,
+      mainMessage: document.getElementById('brief-mainMessage').value || undefined,
+      callToAction: document.getElementById('brief-callToAction').value || undefined,
+      tone: document.getElementById('brief-tone').value || undefined,
+      duration: document.getElementById('brief-duration').value || undefined,
+      format: document.getElementById('brief-format').value || undefined,
+      platform: document.getElementById('brief-platform').value || undefined,
+      script: document.getElementById('brief-script').value || undefined,
+    };
+  }
+
+  document.getElementById('save-draft-btn').addEventListener('click', async () => {
+    try {
+      const body = Object.assign(collectBriefForm(), { isDraft: true });
+      await api('/projects/' + state.currentProject.id + '/brief', { method:'PUT', body: JSON.stringify(body) });
+      toast('Brouillon enregistré.');
+      document.getElementById('brief-save-hint').textContent = 'Brouillon enregistré';
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  document.getElementById('submit-brief-btn').addEventListener('click', async () => {
+    try {
+      const body = Object.assign(collectBriefForm(), { isDraft: false });
+      await api('/projects/' + state.currentProject.id + '/brief', { method:'PUT', body: JSON.stringify(body) });
+      toast('Brief validé !');
+      loadProjectDetail(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Assets ----------
+  async function loadFiles(projectId){
+    const tbody = document.getElementById('files-tbody');
+    tbody.innerHTML = '';
+    try {
+      const files = await api('/projects/' + projectId + '/files');
+      files.forEach(f => {
+        const tr = document.createElement('tr');
+        const kb = (f.fileSize/1024).toFixed(1);
+        tr.innerHTML = `<td>${escapeHtml(f.fileName)}</td><td class="mono" style="font-size:12px">${escapeHtml(f.fileType)}</td><td>${kb} Ko</td><td>${new Date(f.createdAt).toLocaleDateString('fr-FR')}</td>
+          <td class="file-actions">
+            <a href="${API}/projects/${projectId}/files/${f.id}/download" target="_blank">Télécharger</a>
+            <button data-file-id="${f.id}">Supprimer</button>
+          </td>`;
+        tr.querySelector('button').addEventListener('click', async () => {
+          if (!confirm('Supprimer ce fichier ?')) return;
+          try { await api('/projects/' + projectId + '/files/' + f.id, { method:'DELETE' }); loadFiles(projectId); }
+          catch(err){ toast(err.message, 'error'); }
+        });
+        tbody.appendChild(tr);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  dropzone.addEventListener('click', () => fileInput.click());
+  ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) uploadFile(fileInput.files[0]); });
+
+  async function uploadFile(file){
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      await api('/projects/' + state.currentProject.id + '/files', { method:'POST', body: form });
+      toast('Fichier ajouté.');
+      loadFiles(state.currentProject.id);
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  // ---------- Boot ----------
+  (function boot(){
+    const savedUser = localStorage.getItem('mls_user');
+    if (tokens.access && savedUser) {
+      state.user = JSON.parse(savedUser);
+      document.getElementById('user-email').textContent = state.user.firstName + ' (' + state.user.email + ')';
+      showApp();
+      const hashMatch = location.hash.match(/project\/(\d+)/);
+      if (hashMatch) showDetail(hashMatch[1]); else showDashboard();
+    } else {
+      showAuth();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
