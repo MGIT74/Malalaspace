@@ -154,6 +154,63 @@
   .comment-form{display:flex;gap:8px;margin-top:10px;}
   .comment-form input[type=text]{flex:1;}
   .comment-form input.timecode-input{width:90px;flex:none;}
+
+  .table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+  /* ============ RESPONSIVE (mobile) ============ */
+  @media (max-width: 768px){
+    .topbar{padding:12px 16px;}
+    .brand{font-size:17px;}
+    #mobile-menu-btn{display:block !important;}
+    .user-chip{gap:8px;}
+    .user-chip #user-email{display:none;} /* trop de place sur petit écran, l'avatar/logout suffisent */
+
+    .layout{position:relative;}
+    .sidebar{
+      position:fixed; top:0; left:0; bottom:0; z-index:40;
+      background:var(--ink); border-right:1px solid var(--border);
+      width:240px; padding:70px 12px 20px;
+      transform:translateX(-100%); transition:transform .2s ease;
+    }
+    .sidebar.open{transform:translateX(0);}
+    #sidebar-backdrop.open{display:block !important;}
+
+    main{padding:20px 16px 60px;}
+    .page-head{flex-wrap:wrap;gap:10px;}
+    .page-head h1{font-size:21px;}
+
+    .grid{grid-template-columns:1fr;}
+    .field-row{grid-template-columns:1fr;}
+
+    .auth-card{width:100%;padding:26px 20px;}
+    #auth-screen{padding:16px;}
+
+    .overlay{padding:12px;}
+    .modal{padding:20px;max-height:92vh;}
+
+    .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
+    .tab{margin-right:14px;}
+
+    .detail-head{flex-wrap:wrap;gap:8px;}
+    .detail-head h1{font-size:20px;}
+
+    .comment-form{flex-wrap:wrap;}
+    .comment-form input.timecode-input{width:70px;}
+    .comment-form input[type=text]{min-width:120px;}
+
+    #notif-dropdown{
+      position:fixed; top:60px; right:8px; left:8px; width:auto; max-height:70vh;
+    }
+
+    table{font-size:12px;}
+    th,td{padding:8px 6px;white-space:nowrap;}
+  }
+
+  @media (max-width: 420px){
+    .brand{font-size:15px;}
+    .btn{padding:8px 12px;font-size:13px;}
+    .save-row{flex-wrap:wrap;}
+  }
 </style>
 </head>
 <body>
@@ -197,7 +254,10 @@
   <!-- APP SHELL -->
   <div id="app-shell" class="hidden">
     <div class="topbar">
-      <div class="brand"><span class="brand-dot"></span> Malalaspace</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-ghost" id="mobile-menu-btn" style="display:none;font-size:18px;padding:6px 10px;">☰</button>
+        <div class="brand"><span class="brand-dot"></span> Malalaspace</div>
+      </div>
       <div class="user-chip">
         <div style="position:relative">
           <button class="btn btn-ghost" id="notif-bell" style="font-size:16px;">🔔<span id="notif-count" class="hidden" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;"></span></button>
@@ -215,7 +275,8 @@
     </div>
 
     <div class="layout">
-      <aside class="sidebar">
+      <div id="sidebar-backdrop" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;"></div>
+      <aside class="sidebar" id="sidebar">
         <div class="nav-item active" data-view="dashboard">📁 Projets</div>
         <div class="nav-item hidden" id="nav-clients" data-view="clients">👥 Clients</div>
         <div class="nav-section-label hidden" id="nav-admin-label">Administration</div>
@@ -239,10 +300,12 @@
       <!-- CLIENTS (CRM basique) -->
       <section id="view-clients" class="hidden">
         <div class="page-head"><h1>Clients</h1></div>
+        <div class="table-scroll">
         <table>
           <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th></tr></thead>
           <tbody id="clients-tbody"></tbody>
         </table>
+        </div>
         <div id="clients-empty" class="empty-state hidden">Aucun client pour l'instant.</div>
       </section>
 
@@ -256,10 +319,12 @@
         </div>
 
         <div id="settings-tab-users" class="hidden">
+          <div class="table-scroll">
           <table>
             <thead><tr><th>Nom</th><th>Email</th><th>Entreprise</th><th>Rôle</th></tr></thead>
             <tbody id="users-tbody"></tbody>
           </table>
+          </div>
         </div>
 
         <div id="settings-tab-integrations">
@@ -384,10 +449,12 @@
             <div style="font-size:12px;margin-top:6px;">Logos, images, vidéos, PDF, ZIP — jusqu'à 100 Mo</div>
           </div>
           <input type="file" class="file-input" id="file-input" />
+          <div class="table-scroll">
           <table id="files-table">
             <thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Ajouté le</th><th></th></tr></thead>
             <tbody id="files-tbody"></tbody>
           </table>
+          </div>
         </div>
 
         <!-- Steps tab -->
@@ -528,8 +595,25 @@
       if (view === 'dashboard') showDashboard();
       else if (view === 'clients') showClients();
       else if (view === 'settings') showSettings();
+      closeMobileSidebar();
     });
   });
+
+  // ---------- Mobile sidebar drawer ----------
+  function openMobileSidebar(){
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-backdrop').classList.remove('hidden');
+    document.getElementById('sidebar-backdrop').classList.add('open');
+  }
+  function closeMobileSidebar(){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-backdrop').classList.remove('open');
+    document.getElementById('sidebar-backdrop').classList.add('hidden');
+  }
+  document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+  });
+  document.getElementById('sidebar-backdrop').addEventListener('click', closeMobileSidebar);
 
   function applyRoleVisibility(role){
     const isAdmin = role === 'ADMIN';
