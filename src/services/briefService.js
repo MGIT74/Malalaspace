@@ -17,6 +17,13 @@ async function getBrief(user, projectId) {
 /**
  * Crée ou met à jour le brief. Seul le client propriétaire du projet peut le faire
  * (l'équipe le consulte mais ne le modifie pas directement — elle utilise les notes internes).
+ *
+ * Logique de statut :
+ * - Premier enregistrement (brouillon) sur un projet NEW -> passe à BRIEF_PENDING
+ * - Validation (isDraft: false) -> passe à BRIEF_VALIDATED + notif/email à l'équipe
+ * - Si le client modifie à nouveau un brief déjà validé -> repasse à BRIEF_PENDING
+ *   (la validation précédente n'est plus considérée comme à jour) + notif à l'équipe
+ *   pour lui signaler qu'une re-vérification est nécessaire.
  */
 async function upsertBrief(user, projectId, data) {
   const project = await projectService.getProjectForUser(user, projectId);
@@ -28,22 +35,21 @@ async function upsertBrief(user, projectId, data) {
     throw ApiError.forbidden('Seul le client (ou un admin) peut modifier le brief.');
   }
 
+  const existingBrief = await prisma.projectBrief.findUnique({ where: { projectId: Number(projectId) } });
+  const wasValidated = existingBrief ? existingBrief.isDraft === false : false;
+
   const brief = await prisma.projectBrief.upsert({
     where: { projectId: Number(projectId) },
     update: data,
     create: { projectId: Number(projectId), ...data },
   });
 
-  // Si le brief est soumis (isDraft: false) et que le projet est encore au tout début,
-  // on avance la timeline à l'étape "Brief à compléter" -> "Brief validé".
-  if (data.isDraft === false && project.status === 'NEW') {
-    await prisma.project.update({
-      where: { id: Number(projectId) },
-      data: { status: 'BRIEF_PENDING' },
-    });
-  }
-
   if (data.isDraft === false) {
+    // Validation (première fois ou re-validation après modification)
+    if (['NEW', 'BRIEF_PENDING'].includes(project.status)) {
+      await prisma.project.update({ where: { id: project.id }, data: { status: 'BRIEF_VALIDATED' } });
+    }
+
     await notificationService.createNotification(
       project.assignedUserId,
       project.id,
@@ -61,6 +67,23 @@ async function upsertBrief(user, projectId, data) {
           html: emailService.templates.briefValidated(project.name),
         }).catch(() => {});
       }
+    }
+  } else if (data.isDraft === true) {
+    if (wasValidated) {
+      // Le brief était validé, le client vient de le modifier à nouveau : la validation
+      // précédente n'est plus à jour, l'équipe doit revérifier.
+      await prisma.project.update({ where: { id: project.id }, data: { status: 'BRIEF_PENDING' } });
+
+      await notificationService.createNotification(
+        project.assignedUserId,
+        project.id,
+        'brief_updated',
+        'Brief modifié après validation',
+        `Le client a modifié le brief de "${project.name}" après l'avoir déjà validé. Une nouvelle vérification est nécessaire.`
+      );
+    } else if (project.status === 'NEW') {
+      // Premier brouillon
+      await prisma.project.update({ where: { id: project.id }, data: { status: 'BRIEF_PENDING' } });
     }
   }
 

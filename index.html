@@ -1266,7 +1266,8 @@
       document.getElementById('brief-format').value = b.format || '';
       document.getElementById('brief-platform').value = b.platform || '';
       document.getElementById('brief-script').value = b.script || '';
-      document.getElementById('brief-save-hint').textContent = b.isDraft === false ? 'Brief validé' : (b.updatedAt ? 'Brouillon enregistré' : '');
+      document.getElementById('brief-save-hint').textContent = b.isDraft === false ? '✓ Brief validé' : (b.updatedAt ? 'Brouillon enregistré' : '');
+      state.briefWasValidated = b.isDraft === false;
 
       // steps tab
       const stepsList = document.getElementById('steps-list');
@@ -1344,10 +1345,17 @@
 
   document.getElementById('save-draft-btn').addEventListener('click', async () => {
     try {
+      const wasValidated = state.briefWasValidated;
       const body = Object.assign(collectBriefForm(), { isDraft: true });
       await api('/projects/' + state.currentProject.id + '/brief', { method:'PUT', body: JSON.stringify(body) });
-      toast('Brouillon enregistré.');
-      document.getElementById('brief-save-hint').textContent = 'Brouillon enregistré';
+      if (wasValidated) {
+        toast('Brief modifié après validation — équipe notifiée, nouvelle validation nécessaire.');
+        state.briefWasValidated = false;
+        loadProjectDetail(state.currentProject.id);
+      } else {
+        toast('Brouillon enregistré.');
+        document.getElementById('brief-save-hint').textContent = 'Brouillon enregistré';
+      }
     } catch(err){ toast(err.message, 'error'); }
   });
 
@@ -1371,9 +1379,18 @@
       briefAutoSaveTimer = setTimeout(async () => {
         if (!state.currentProject) return;
         try {
+          const wasValidated = state.briefWasValidated;
           const body = Object.assign(collectBriefForm(), { isDraft: true });
           await api('/projects/' + state.currentProject.id + '/brief', { method:'PUT', body: JSON.stringify(body) });
-          document.getElementById('brief-save-hint').textContent = 'Enregistré automatiquement à ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+          if (wasValidated) {
+            document.getElementById('brief-save-hint').textContent = '⚠️ Brief modifié après validation — votre équipe a été notifiée, une nouvelle validation sera nécessaire.';
+            state.briefWasValidated = false;
+            const badge = document.getElementById('detail-badge');
+            badge.className = 'badge badge-BRIEF_PENDING';
+            badge.textContent = 'Brief à compléter';
+          } else {
+            document.getElementById('brief-save-hint').textContent = 'Enregistré automatiquement à ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+          }
         } catch(err){ /* échec silencieux, l'utilisateur peut toujours cliquer "Enregistrer le brouillon" */ }
       }, 2000);
     });
@@ -1478,7 +1495,7 @@
     bell: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     play: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><circle cx="12" cy="12" r="9"/><path d="M10.3 9v6l5-3z" fill="currentColor" stroke="none"/></svg>',
   };
-  const NOTIF_ICONS = { new_comment:ICON_SVG.comment, video_ready:ICON_SVG.film, validation:ICON_SVG.check, brief_validated:ICON_SVG.doc, project_assigned:ICON_SVG.folder };
+  const NOTIF_ICONS = { new_comment:ICON_SVG.comment, video_ready:ICON_SVG.film, validation:ICON_SVG.check, brief_validated:ICON_SVG.doc, brief_updated:ICON_SVG.doc, project_assigned:ICON_SVG.folder };
 
   async function refreshNotifications(){
     try {
