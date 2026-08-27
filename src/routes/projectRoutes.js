@@ -19,6 +19,7 @@ const { updateStepSchema } = require('../validators/stepValidator');
 const { createNoteSchema } = require('../validators/noteValidator');
 const { assignProjectSchema } = require('../validators/assignValidator');
 const { addStepSchema, adminCreateProjectSchema } = require('../validators/adminValidator');
+const { updateDeadlineSchema } = require('../validators/deadlineValidator');
 
 const router = express.Router();
 
@@ -30,6 +31,7 @@ router.post('/', validate(createProjectSchema), projectController.create);
 router.post('/admin', authorize('ADMIN'), validate(adminCreateProjectSchema), projectController.createForClient);
 router.get('/:id', projectController.getById);
 router.patch('/:id/assign', authorize('ADMIN'), validate(assignProjectSchema), projectController.assign);
+router.patch('/:id/deadline', validate(updateDeadlineSchema), projectController.updateDeadline);
 router.delete('/:id', authorize('ADMIN'), projectController.remove);
 
 router.get('/:id/brief', briefController.getBrief);

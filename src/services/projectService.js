@@ -185,4 +185,19 @@ async function assignProject(user, projectId, employeeId) {
   return project;
 }
 
-module.exports = { listProjects, createProject, createProjectForClient, deleteProject, getProjectForUser, scopeForUser, assignProject };
+/**
+ * Met à jour la deadline d'un projet. Réservé à l'admin ou à l'employé assigné.
+ */
+async function updateDeadline(user, projectId, deadline) {
+  const project = await getProjectForUser(user, projectId);
+  const canEdit = user.role === 'ADMIN' || (user.role === 'EMPLOYEE' && project.assignedUserId === user.id);
+  if (!canEdit) {
+    throw ApiError.forbidden();
+  }
+  return prisma.project.update({
+    where: { id: Number(projectId) },
+    data: { deadline: deadline ? new Date(deadline) : null },
+  });
+}
+
+module.exports = { listProjects, createProject, createProjectForClient, deleteProject, getProjectForUser, scopeForUser, assignProject, updateDeadline };

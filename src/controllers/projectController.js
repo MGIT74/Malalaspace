@@ -32,4 +32,9 @@ const remove = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Projet supprimé.' });
 });
 
-module.exports = { list, create, getById, assign, createForClient, remove };
+const updateDeadline = asyncHandler(async (req, res) => {
+  const project = await projectService.updateDeadline(req.user, req.params.id, req.body.deadline);
+  res.status(200).json({ success: true, data: project });
+});
+
+module.exports = { list, create, getById, assign, createForClient, remove, updateDeadline };

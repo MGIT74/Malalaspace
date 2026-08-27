@@ -170,6 +170,22 @@
   .status-dot.off{background:var(--text-muted);}
   .settings-form{max-width:480px;margin-top:20px;}
   .filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .search-input-wrap{position:relative;max-width:320px;margin-bottom:18px;}
+  .search-input-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
+  .search-input-wrap input{padding-left:36px;}
+  .view-toggle-btn{background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;}
+  .view-toggle-btn.active{background:var(--surface);color:var(--text);border-radius:6px;}
+  .kanban-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;}
+  .kanban-col{flex:0 0 260px;background:var(--surface-alt);border-radius:var(--radius);padding:12px;max-height:calc(100vh - 260px);display:flex;flex-direction:column;}
+  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;margin-bottom:10px;padding:0 2px;}
+  .kanban-col-count{font-size:11px;color:var(--text-muted);background:var(--surface);padding:1px 7px;border-radius:10px;}
+  .kanban-cards{overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;font-size:13px;}
+  .kanban-card:hover{border-color:#454b59;}
+  .kanban-card .kc-name{font-weight:600;margin-bottom:2px;}
+  .kanban-card .kc-meta{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-top:6px;}
+  .kanban-card .kc-deadline{color:var(--amber);}
+  .kanban-card .kc-deadline.overdue{color:var(--danger);}
 
   .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
   .video-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
@@ -351,10 +367,12 @@
       <div id="sidebar-backdrop" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;"></div>
       <aside class="sidebar" id="sidebar">
         <div class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg> Projets</div>
+        <div class="nav-item" data-view="calendar"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg> Calendrier</div>
         <div class="nav-item" data-view="profile"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20a7 7 0 0 1 14 0"/></svg> Mon profil</div>
         <div class="nav-item hidden" id="nav-team" data-view="team"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="7" rx="1.5"/><rect x="14" y="15" width="7" height="7" rx="1.5"/></svg> Équipe</div>
         <div class="nav-item hidden" id="nav-clients" data-view="clients"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="3.2"/><path d="M22 20v-1a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15A3.2 3.2 0 0 1 17.2 7a3.2 3.2 0 0 1-1.9 2.93"/></svg> Clients</div>
         <div class="nav-section-label hidden" id="nav-admin-label">Administration</div>
+        <div class="nav-item hidden" id="nav-invoices" data-view="invoices"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-3-2V4a1 1 0 0 1 1-1Z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg> Factures</div>
         <div class="nav-item hidden" id="nav-settings" data-view="settings"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.3M12 18.7V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.3M18.7 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg> Paramètres</div>
       </aside>
 
@@ -366,6 +384,16 @@
           <h1>Mes projets</h1>
           <button class="btn btn-primary" id="new-project-btn">+ Nouveau projet</button>
         </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;">
+          <div class="search-input-wrap" style="margin-bottom:0;flex:1;min-width:200px;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            <input type="text" id="projects-search" placeholder="Rechercher un projet..." />
+          </div>
+          <div style="display:flex;gap:4px;background:var(--surface-alt);padding:3px;border-radius:8px;">
+            <button class="btn-ghost view-toggle-btn active" data-view-mode="list" style="padding:6px 12px;border-radius:6px;">Liste</button>
+            <button class="btn-ghost view-toggle-btn" data-view-mode="kanban" style="padding:6px 12px;border-radius:6px;">Kanban</button>
+          </div>
+        </div>
         <div id="dashboard-filters" class="hidden" style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
           <button class="btn filter-btn active" data-filter="all">Tous</button>
           <button class="btn filter-btn" data-filter="new">Nouveaux</button>
@@ -374,6 +402,7 @@
           <button class="btn filter-btn" data-filter="delivered">Livrés</button>
         </div>
         <div id="projects-grid" class="grid"></div>
+        <div id="kanban-board" class="hidden"></div>
         <div id="projects-empty" class="empty-state hidden">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
           <div class="empty-title">Aucun projet pour l'instant</div>
@@ -419,6 +448,10 @@
           <h1>Équipe</h1>
           <button class="btn btn-primary hidden" id="new-team-member-btn">+ Ajouter un membre</button>
         </div>
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <input type="text" id="team-search" placeholder="Rechercher un membre..." />
+        </div>
         <div class="table-scroll" id="team-table-wrap">
         <table>
           <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Rôle</th><th>Projets assignés</th><th>Depuis</th></tr></thead>
@@ -432,9 +465,42 @@
         </div>
       </section>
 
+      <!-- CALENDRIER -->
+      <section id="view-calendar" class="hidden">
+        <div class="page-head">
+          <h1>Calendrier</h1>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn" id="cal-prev">←</button>
+            <span id="cal-month-label" style="font-weight:600;min-width:140px;text-align:center;display:inline-block;"></span>
+            <button class="btn" id="cal-next">→</button>
+          </div>
+        </div>
+        <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;"></div>
+      </section>
+
+      <!-- FACTURES -->
+      <section id="view-invoices" class="hidden">
+        <div class="page-head"><h1>Factures</h1></div>
+        <div class="table-scroll" id="invoices-table-wrap">
+        <table>
+          <thead><tr><th>Projet</th><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead>
+          <tbody id="invoices-tbody"></tbody>
+        </table>
+        </div>
+        <div id="invoices-empty" class="empty-state hidden">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-3-2V4a1 1 0 0 1 1-1Z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+          <div class="empty-title">Aucune facture pour l'instant</div>
+          <div class="empty-sub">Les paiements Stripe apparaîtront ici automatiquement une fois l'intégration activée (acompte 50% + solde à la livraison).</div>
+        </div>
+      </section>
+
       <!-- CLIENTS (CRM basique) -->
       <section id="view-clients" class="hidden">
         <div class="page-head"><h1>Clients</h1></div>
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <input type="text" id="clients-search" placeholder="Rechercher un client..." />
+        </div>
         <div class="table-scroll" id="clients-table-wrap">
         <table>
           <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th></tr></thead>
@@ -458,6 +524,10 @@
         </div>
 
         <div id="settings-tab-users" class="hidden">
+          <div class="search-input-wrap">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            <input type="text" id="users-search" placeholder="Rechercher un utilisateur..." />
+          </div>
           <div class="table-scroll">
           <table>
             <thead><tr><th>Nom</th><th>Email</th><th>Entreprise</th><th>Rôle</th></tr></thead>
@@ -604,6 +674,11 @@
             <div style="display:flex;gap:8px;">
               <select id="assign-select" style="flex:1"></select>
               <button class="btn btn-primary" id="assign-btn">Attribuer</button>
+            </div>
+            <label>Date de livraison estimée</label>
+            <div style="display:flex;gap:8px;">
+              <input type="date" id="deadline-input" style="flex:1" />
+              <button class="btn btn-primary" id="deadline-btn">Enregistrer</button>
             </div>
           </div>
           <div class="steps-list" id="steps-list"></div>
@@ -756,7 +831,7 @@
   }
 
   // ---------- Sidebar navigation ----------
-  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile', 'team'];
+  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile', 'team', 'calendar', 'invoices'];
   function switchView(view){
     ALL_VIEWS.forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
@@ -774,6 +849,8 @@
       else if (view === 'settings') showSettings();
       else if (view === 'profile') showProfile();
       else if (view === 'team') showTeam();
+      else if (view === 'calendar') showCalendar();
+      else if (view === 'invoices') showInvoices();
       closeMobileSidebar();
     });
   });
@@ -799,6 +876,7 @@
     const isTeam = role === 'ADMIN' || role === 'EMPLOYEE';
     document.getElementById('nav-clients').classList.toggle('hidden', !isTeam);
     document.getElementById('nav-team').classList.toggle('hidden', !isTeam);
+    document.getElementById('nav-invoices').classList.toggle('hidden', !isAdmin);
     document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
     document.getElementById('nav-admin-label').classList.toggle('hidden', !isAdmin);
   }
@@ -819,42 +897,62 @@
   async function showClients(){
     switchView('clients');
     try {
-      const clients = await api('/users/clients');
-      const tbody = document.getElementById('clients-tbody');
-      const empty = document.getElementById('clients-empty');
-      const tableWrap = document.getElementById('clients-table-wrap');
-      tbody.innerHTML = '';
-      if (!clients.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
-      empty.classList.add('hidden');
-      tableWrap.classList.remove('hidden');
-      clients.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>`;
-        tbody.appendChild(tr);
-      });
+      state.allClients = await api('/users/clients');
+      renderClientsTable(state.allClients);
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  function renderClientsTable(clients){
+    const tbody = document.getElementById('clients-tbody');
+    const empty = document.getElementById('clients-empty');
+    const tableWrap = document.getElementById('clients-table-wrap');
+    tbody.innerHTML = '';
+    if (!clients.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
+    empty.classList.add('hidden');
+    tableWrap.classList.remove('hidden');
+    clients.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('clients-search').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = (state.allClients||[]).filter(c => (c.firstName+' '+c.lastName+' '+c.email+' '+(c.company||'')).toLowerCase().includes(term));
+    renderClientsTable(filtered);
+  });
 
   // ---------- Équipe ----------
   async function showTeam(){
     switchView('team');
     document.getElementById('new-team-member-btn').classList.toggle('hidden', state.user.role !== 'ADMIN');
     try {
-      const team = await api('/users/team');
-      const tbody = document.getElementById('team-tbody');
-      const empty = document.getElementById('team-empty');
-      const tableWrap = document.getElementById('team-table-wrap');
-      tbody.innerHTML = '';
-      if (!team.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
-      empty.classList.add('hidden');
-      tableWrap.classList.remove('hidden');
-      team.forEach(m => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(m.firstName + ' ' + m.lastName)}</td><td>${escapeHtml(m.email)}</td><td>${escapeHtml(m.phone || '—')}</td><td><span class="badge badge-${m.role==='ADMIN'?'DELIVERED':'IN_PRODUCTION'}">${m.role}</span></td><td>${m.projectCount}</td><td>${new Date(m.createdAt).toLocaleDateString('fr-FR')}</td>`;
-        tbody.appendChild(tr);
-      });
+      state.allTeam = await api('/users/team');
+      renderTeamTable(state.allTeam);
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  function renderTeamTable(team){
+    const tbody = document.getElementById('team-tbody');
+    const empty = document.getElementById('team-empty');
+    const tableWrap = document.getElementById('team-table-wrap');
+    tbody.innerHTML = '';
+    if (!team.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
+    empty.classList.add('hidden');
+    tableWrap.classList.remove('hidden');
+    team.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(m.firstName + ' ' + m.lastName)}</td><td>${escapeHtml(m.email)}</td><td>${escapeHtml(m.phone || '—')}</td><td><span class="badge badge-${m.role==='ADMIN'?'DELIVERED':'IN_PRODUCTION'}">${m.role}</span></td><td>${m.projectCount}</td><td>${new Date(m.createdAt).toLocaleDateString('fr-FR')}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('team-search').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = (state.allTeam||[]).filter(m => (m.firstName+' '+m.lastName+' '+m.email).toLowerCase().includes(term));
+    renderTeamTable(filtered);
+  });
 
   const teamOverlay = document.getElementById('new-team-overlay');
   document.getElementById('new-team-member-btn').addEventListener('click', () => teamOverlay.classList.remove('hidden'));
@@ -878,6 +976,102 @@
       showTeam();
     } catch(err){ toast(err.message, 'error'); }
   });
+
+  // ---------- Calendrier (deadlines) ----------
+  let calendarDate = new Date();
+
+  async function showCalendar(){
+    switchView('calendar');
+    try {
+      state.calendarProjects = await api('/projects');
+      renderCalendar();
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  function renderCalendar(){
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    document.getElementById('cal-month-label').textContent = calendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    const projects = state.calendarProjects || [];
+    const byDay = {};
+    projects.forEach(p => {
+      if (!p.deadline) return;
+      const d = new Date(p.deadline);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const key = d.getDate();
+        (byDay[key] = byDay[key] || []).push(p);
+      }
+    });
+
+    const grid = document.getElementById('calendar-grid');
+    grid.innerHTML = '';
+    ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(d => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'background:var(--surface-alt);padding:8px;font-size:11px;color:var(--text-muted);text-align:center;font-weight:600;';
+      cell.textContent = d;
+      grid.appendChild(cell);
+    });
+
+    const firstDay = new Date(year, month, 1);
+    let startOffset = firstDay.getDay() - 1; // lundi = 0
+    if (startOffset < 0) startOffset = 6;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+
+    for (let i = 0; i < startOffset; i++) {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'background:var(--ink);min-height:90px;';
+      grid.appendChild(cell);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement('div');
+      const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===day;
+      cell.style.cssText = `background:var(--surface);min-height:90px;padding:6px;font-size:12px;${isToday?'box-shadow:inset 0 0 0 2px var(--accent);':''}`;
+      let html = `<div style="color:${isToday?'var(--accent)':'var(--text-muted)'};font-weight:${isToday?'700':'500'};margin-bottom:4px;">${day}</div>`;
+      (byDay[day] || []).forEach(p => {
+        html += `<div class="kanban-card" style="padding:4px 6px;margin-bottom:3px;font-size:11px;" data-project-id="${p.id}">${escapeHtml(p.name)}</div>`;
+      });
+      cell.innerHTML = html;
+      cell.querySelectorAll('[data-project-id]').forEach(el => {
+        el.addEventListener('click', () => showDetail(Number(el.dataset.projectId)));
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  // ---------- Factures ----------
+  async function showInvoices(){
+    switchView('invoices');
+    try {
+      const payments = await api('/payments');
+      const tbody = document.getElementById('invoices-tbody');
+      const empty = document.getElementById('invoices-empty');
+      const tableWrap = document.getElementById('invoices-table-wrap');
+      tbody.innerHTML = '';
+      if (!payments.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
+      empty.classList.add('hidden');
+      tableWrap.classList.remove('hidden');
+      const PAYMENT_TYPE_LABELS = { DEPOSIT: 'Acompte', BALANCE: 'Solde' };
+      const PAYMENT_STATUS_LABELS = { PENDING: 'En attente', SUCCEEDED: 'Payé', FAILED: 'Échoué', REFUNDED: 'Remboursé' };
+      payments.forEach(pay => {
+        const tr = document.createElement('tr');
+        const amount = (pay.amount / 100).toLocaleString('fr-FR', { style: 'currency', currency: pay.currency || 'EUR' });
+        tr.innerHTML = `<td>${escapeHtml(pay.project?.name || '—')}</td><td>${PAYMENT_TYPE_LABELS[pay.type] || pay.type}</td><td>${amount}</td><td><span class="badge badge-${pay.status==='SUCCEEDED'?'DELIVERED':pay.status==='FAILED'?'CLIENT_WAITING':'NEW'}">${PAYMENT_STATUS_LABELS[pay.status] || pay.status}</span></td><td>${new Date(pay.createdAt).toLocaleDateString('fr-FR')}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
 
   async function showSettings(){
     switchView('settings');
@@ -914,35 +1108,45 @@
 
   async function loadUsersList(){
     try {
-      const users = await api('/users');
-      const tbody = document.getElementById('users-tbody');
-      tbody.innerHTML = '';
-      users.forEach(u => {
-        const tr = document.createElement('tr');
-        const isSelf = state.user && state.user.id === u.id;
-        const roleCell = isSelf
-          ? `<span class="badge badge-DELIVERED">${u.role}</span> <span class="save-hint">(vous)</span>`
-          : `<select data-user-id="${u.id}" class="role-select" style="width:auto;display:inline-block;padding:6px 10px;">
-              <option value="CLIENT" ${u.role==='CLIENT'?'selected':''}>CLIENT</option>
-              <option value="EMPLOYEE" ${u.role==='EMPLOYEE'?'selected':''}>EMPLOYEE</option>
-              <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
-            </select>`;
-        tr.innerHTML = `<td>${escapeHtml(u.firstName + ' ' + u.lastName)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.company || '—')}</td><td>${roleCell}</td>`;
-        tbody.appendChild(tr);
-      });
-      tbody.querySelectorAll('.role-select').forEach(select => {
-        select.addEventListener('change', async () => {
-          const userId = select.dataset.userId;
-          const newRole = select.value;
-          if (!confirm(`Changer le rôle de cet utilisateur en ${newRole} ?`)) { loadUsersList(); return; }
-          try {
-            await api('/users/' + userId + '/role', { method:'PUT', body: JSON.stringify({ role: newRole }) });
-            toast('Rôle mis à jour.');
-          } catch(err){ toast(err.message, 'error'); loadUsersList(); }
-        });
-      });
+      state.allUsers = await api('/users');
+      renderUsersTable(state.allUsers);
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  function renderUsersTable(users){
+    const tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      const isSelf = state.user && state.user.id === u.id;
+      const roleCell = isSelf
+        ? `<span class="badge badge-DELIVERED">${u.role}</span> <span class="save-hint">(vous)</span>`
+        : `<select data-user-id="${u.id}" class="role-select" style="width:auto;display:inline-block;padding:6px 10px;">
+            <option value="CLIENT" ${u.role==='CLIENT'?'selected':''}>CLIENT</option>
+            <option value="EMPLOYEE" ${u.role==='EMPLOYEE'?'selected':''}>EMPLOYEE</option>
+            <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
+          </select>`;
+      tr.innerHTML = `<td>${escapeHtml(u.firstName + ' ' + u.lastName)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.company || '—')}</td><td>${roleCell}</td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.role-select').forEach(select => {
+      select.addEventListener('change', async () => {
+        const userId = select.dataset.userId;
+        const newRole = select.value;
+        if (!confirm(`Changer le rôle de cet utilisateur en ${newRole} ?`)) { loadUsersList(); return; }
+        try {
+          await api('/users/' + userId + '/role', { method:'PUT', body: JSON.stringify({ role: newRole }) });
+          toast('Rôle mis à jour.');
+        } catch(err){ toast(err.message, 'error'); loadUsersList(); }
+      });
+    });
+  }
+
+  document.getElementById('users-search').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = (state.allUsers||[]).filter(u => (u.firstName+' '+u.lastName+' '+u.email+' '+(u.company||'')).toLowerCase().includes(term));
+    renderUsersTable(filtered);
+  });
 
   document.getElementById('save-smtp-btn').addEventListener('click', async () => {
     try {
@@ -1106,26 +1310,86 @@
 
   // ---------- Dashboard ----------
   let dashboardFilter = 'all';
+  let dashboardViewMode = 'list';
+  let dashboardSearchTerm = '';
   const FILTER_STATUS_MAP = {
     new: ['NEW', 'BRIEF_PENDING', 'BRIEF_VALIDATED'],
     review: ['IN_PRODUCTION', 'IN_REVIEW'],
     waiting: ['CLIENT_WAITING'],
     delivered: ['READY_FOR_DELIVERY', 'DELIVERED'],
   };
+  const KANBAN_COLUMNS = [
+    { key: 'new', label: 'Nouveaux', statuses: ['NEW','BRIEF_PENDING','BRIEF_VALIDATED'] },
+    { key: 'production', label: 'En production', statuses: ['IN_PRODUCTION'] },
+    { key: 'review', label: 'En révision', statuses: ['IN_REVIEW'] },
+    { key: 'waiting', label: 'Attente client', statuses: ['CLIENT_WAITING'] },
+    { key: 'delivered', label: 'Prêt / Livré', statuses: ['READY_FOR_DELIVERY','DELIVERED'] },
+  ];
+
+  function matchesSearch(p, term){
+    if (!term) return true;
+    const haystack = (p.name + ' ' + (p.companyName||'') + ' ' + (p.client ? p.client.firstName+' '+p.client.lastName : '')).toLowerCase();
+    return haystack.includes(term.toLowerCase());
+  }
 
   async function loadProjects(){
     const grid = document.getElementById('projects-grid');
+    const kanban = document.getElementById('kanban-board');
     const empty = document.getElementById('projects-empty');
     grid.innerHTML = '';
     document.getElementById('dashboard-filters').classList.toggle('hidden', state.user.role === 'CLIENT');
     try {
       const projects = await api('/projects');
       state.projects = projects;
-      const filtered = dashboardFilter === 'all' ? projects : projects.filter(p => (FILTER_STATUS_MAP[dashboardFilter]||[]).includes(p.status));
-      if (!filtered.length) { empty.classList.remove('hidden'); return; }
+      let filtered = dashboardFilter === 'all' ? projects : projects.filter(p => (FILTER_STATUS_MAP[dashboardFilter]||[]).includes(p.status));
+      filtered = filtered.filter(p => matchesSearch(p, dashboardSearchTerm));
+
+      if (!filtered.length) {
+        empty.classList.remove('hidden');
+        grid.classList.add('hidden');
+        kanban.classList.add('hidden');
+        return;
+      }
       empty.classList.add('hidden');
-      filtered.forEach(p => grid.appendChild(renderProjectCard(p)));
+
+      if (dashboardViewMode === 'kanban') {
+        grid.classList.add('hidden');
+        kanban.classList.remove('hidden');
+        renderKanban(filtered);
+      } else {
+        kanban.classList.add('hidden');
+        grid.classList.remove('hidden');
+        filtered.forEach(p => grid.appendChild(renderProjectCard(p)));
+      }
     } catch(err){ toast(err.message, 'error'); }
+  }
+
+  function renderKanban(projects){
+    const board = document.getElementById('kanban-board');
+    board.innerHTML = '';
+    board.className = 'kanban-board';
+    const today = new Date();
+    KANBAN_COLUMNS.forEach(col => {
+      const items = projects.filter(p => col.statuses.includes(p.status));
+      const colEl = document.createElement('div');
+      colEl.className = 'kanban-col';
+      colEl.innerHTML = `<div class="kanban-col-head"><span>${col.label}</span><span class="kanban-col-count">${items.length}</span></div><div class="kanban-cards"></div>`;
+      const cardsEl = colEl.querySelector('.kanban-cards');
+      items.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'kanban-card';
+        let deadlineHtml = '';
+        if (p.deadline) {
+          const d = new Date(p.deadline);
+          const overdue = d < today && !['DELIVERED'].includes(p.status);
+          deadlineHtml = `<span class="kc-deadline ${overdue?'overdue':''}">${d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'})}</span>`;
+        }
+        card.innerHTML = `<div class="kc-name">${escapeHtml(p.name)}</div><div style="color:var(--text-muted);font-size:12px;">${escapeHtml(p.companyName||'—')}</div><div class="kc-meta"><span>${p.progress||0}%</span>${deadlineHtml}</div>`;
+        card.addEventListener('click', () => showDetail(p.id));
+        cardsEl.appendChild(card);
+      });
+      board.appendChild(colEl);
+    });
   }
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -1135,6 +1399,20 @@
       dashboardFilter = btn.dataset.filter;
       loadProjects();
     });
+  });
+
+  document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dashboardViewMode = btn.dataset.viewMode;
+      loadProjects();
+    });
+  });
+
+  document.getElementById('projects-search').addEventListener('input', (e) => {
+    dashboardSearchTerm = e.target.value;
+    loadProjects();
   });
 
   function renderScrubber(steps, container){
@@ -1254,6 +1532,7 @@
       } else {
         assignWrap.classList.add('hidden');
       }
+      document.getElementById('deadline-input').value = p.deadline ? p.deadline.substring(0, 10) : '';
 
       // brief
       const b = p.brief || {};
@@ -1459,6 +1738,13 @@
     } catch(err){ toast(err.message, 'error'); }
   });
 
+  document.getElementById('deadline-btn').addEventListener('click', async () => {
+    try {
+      await api('/projects/' + state.currentProject.id + '/deadline', { method:'PATCH', body: JSON.stringify({ deadline: document.getElementById('deadline-input').value || null }) });
+      toast('Date de livraison enregistrée.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
   // ---------- Notes internes (équipe uniquement) ----------
   async function loadNotes(projectId){
     try {
@@ -1538,105 +1824,6 @@
     e.stopPropagation();
     try { await api('/notifications/read-all', { method:'PATCH' }); refreshNotifications(); } catch(err){}
   });
-
-  // ---------- Assignation d'employé (admin) ----------
-  async function populateEmployeeSelect(currentAssignedId){
-    try {
-      const users = await api('/users');
-      const employees = users.filter(u => u.role === 'EMPLOYEE');
-      const select = document.getElementById('assign-select');
-      select.innerHTML = '<option value="">— Non attribué —</option>' +
-        employees.map(e => `<option value="${e.id}" ${e.id === currentAssignedId ? 'selected' : ''}>${escapeHtml(e.firstName + ' ' + e.lastName)}</option>`).join('');
-    } catch(err){ /* silencieux si pas admin */ }
-  }
-
-  document.getElementById('assign-btn').addEventListener('click', async () => {
-    const employeeId = document.getElementById('assign-select').value;
-    if (!employeeId) { toast('Choisissez un employé.', 'error'); return; }
-    try {
-      await api('/projects/' + state.currentProject.id + '/assign', { method:'PATCH', body: JSON.stringify({ employeeId: Number(employeeId) }) });
-      toast('Projet attribué.');
-    } catch(err){ toast(err.message, 'error'); }
-  });
-
-  // ---------- Notes internes (équipe uniquement) ----------
-  async function loadNotes(projectId){
-    try {
-      const notes = await api('/projects/' + projectId + '/notes');
-      const list = document.getElementById('notes-list');
-      list.innerHTML = '';
-      if (!notes.length) { list.innerHTML = '<div class="empty-state">Aucune note pour l\'instant.</div>'; return; }
-      notes.forEach(n => {
-        const el = document.createElement('div');
-        el.className = 'comment-item';
-        el.innerHTML = `<div class="comment-head"><strong style="color:var(--text)">${escapeHtml(n.user.firstName)}</strong><span>${new Date(n.createdAt).toLocaleString('fr-FR')}</span></div><div>${escapeHtml(n.content)}</div>`;
-        list.appendChild(el);
-      });
-    } catch(err){ toast(err.message, 'error'); }
-  }
-
-  document.getElementById('add-note-btn').addEventListener('click', async () => {
-    const input = document.getElementById('note-input');
-    if (!input.value.trim()) return;
-    try {
-      await api('/projects/' + state.currentProject.id + '/notes', { method:'POST', body: JSON.stringify({ content: input.value }) });
-      input.value = '';
-      loadNotes(state.currentProject.id);
-    } catch(err){ toast(err.message, 'error'); }
-  });
-
-  // ---------- Notifications ----------
-  let notifPollTimer = null;
-
-  async function refreshNotifCount(){
-    try {
-      const notifs = await api('/notifications');
-      const unread = notifs.filter(n => !n.readAt).length;
-      const badge = document.getElementById('notif-count');
-      if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
-      else { badge.classList.add('hidden'); }
-      return notifs;
-    } catch(err){ return []; }
-  }
-
-  function renderNotifList(notifs){
-    const list = document.getElementById('notif-list');
-    list.innerHTML = '';
-    if (!notifs.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Aucune notification</div>'; return; }
-    notifs.slice(0, 20).forEach(n => {
-      const item = document.createElement('div');
-      item.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;' + (!n.readAt ? 'background:rgba(10,132,255,.06);' : '');
-      item.innerHTML = `<div style="font-size:13px;font-weight:600;">${escapeHtml(n.title)}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escapeHtml(n.message)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${new Date(n.createdAt).toLocaleString('fr-FR')}</div>`;
-      item.addEventListener('click', async () => {
-        if (!n.readAt) { await api('/notifications/' + n.id + '/read', { method:'PATCH' }); }
-        if (n.projectId) showDetail(n.projectId);
-        document.getElementById('notif-dropdown').classList.add('hidden');
-        refreshNotifCount().then(renderNotifList);
-      });
-      list.appendChild(item);
-    });
-  }
-
-  document.getElementById('notif-bell').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    const dropdown = document.getElementById('notif-dropdown');
-    const willShow = dropdown.classList.contains('hidden');
-    dropdown.classList.toggle('hidden');
-    if (willShow) { const notifs = await refreshNotifCount(); renderNotifList(notifs); }
-  });
-  document.addEventListener('click', () => document.getElementById('notif-dropdown').classList.add('hidden'));
-  document.getElementById('notif-dropdown').addEventListener('click', e => e.stopPropagation());
-
-  document.getElementById('notif-mark-all').addEventListener('click', async () => {
-    try { await api('/notifications/read-all', { method:'PATCH' }); const notifs = await refreshNotifCount(); renderNotifList(notifs); }
-    catch(err){ toast(err.message, 'error'); }
-  });
-
-  function startNotifPolling(){
-    refreshNotifCount();
-    if (notifPollTimer) clearInterval(notifPollTimer);
-    notifPollTimer = setInterval(refreshNotifCount, 30000); // toutes les 30s
-  }
 
   // ---------- Videos & comments ----------
   const canManageVideos = () => state.user && (state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE');
