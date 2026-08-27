@@ -22,6 +22,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api', apiRoutes);
 
+// Sert les assets statiques (logos, etc.) — explicite pour ne pas dépendre du comportement de nginx
+app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
+
 // Fallback : sert la page d'aperçu statique pour toute route non-API
 // (utile si nginx ne trouve pas de fichier statique et proxy vers Node)
 app.get(/^\/(?!api).*/, (req, res) => {
