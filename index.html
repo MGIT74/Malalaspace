@@ -75,7 +75,8 @@
   .btn:disabled{opacity:.5;cursor:not-allowed;}
 
   main{flex:1;padding:32px 40px;overflow-y:auto;}
-  .page-container{max-width:1000px;}
+  .page-container{max-width:1220px;}
+  [data-theme="dark"] main{background:radial-gradient(ellipse 900px 500px at 15% -10%, rgba(10,132,255,.07), transparent 60%);}
   .layout{display:flex;flex:1;min-height:0;}
   .sidebar{width:210px;flex-shrink:0;border-right:1px solid var(--border);padding:20px 10px;}
   .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--text-muted);font-size:14px;cursor:pointer;margin-bottom:2px;user-select:none;}
@@ -101,7 +102,10 @@
   /* ---------- Dashboard ---------- */
   .page-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
   .page-head h1{font-size:26px;margin:0;}
-  .empty-state{border:1px dashed var(--border);border-radius:var(--radius);padding:60px 20px;text-align:center;color:var(--text-muted);}
+  .empty-state{border:1px dashed var(--border);border-radius:var(--radius);padding:90px 24px;text-align:center;color:var(--text-muted);}
+  .empty-state svg{opacity:.5;margin-bottom:16px;}
+  .empty-state .empty-title{color:var(--text);font-size:15px;font-weight:600;margin-bottom:6px;}
+  .empty-state .empty-sub{font-size:13px;max-width:340px;margin:0 auto;}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:.15s;}
   .card:hover{border-color:#454b59;transform:translateY(-1px);}
@@ -371,7 +375,9 @@
         </div>
         <div id="projects-grid" class="grid"></div>
         <div id="projects-empty" class="empty-state hidden">
-          Aucun projet pour l'instant.<br/><span style="font-size:13px">Cliquez sur « + Nouveau projet » pour démarrer votre première vidéo.</span>
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+          <div class="empty-title">Aucun projet pour l'instant</div>
+          <div class="empty-sub">Cliquez sur « + Nouveau projet » pour démarrer votre première vidéo.</div>
         </div>
       </section>
 
@@ -413,25 +419,33 @@
           <h1>Équipe</h1>
           <button class="btn btn-primary hidden" id="new-team-member-btn">+ Ajouter un membre</button>
         </div>
-        <div class="table-scroll">
+        <div class="table-scroll" id="team-table-wrap">
         <table>
           <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Rôle</th><th>Projets assignés</th><th>Depuis</th></tr></thead>
           <tbody id="team-tbody"></tbody>
         </table>
         </div>
-        <div id="team-empty" class="empty-state hidden">Aucun membre d'équipe pour l'instant.</div>
+        <div id="team-empty" class="empty-state hidden">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="7" rx="1.5"/><rect x="14" y="15" width="7" height="7" rx="1.5"/></svg>
+          <div class="empty-title">Aucun membre d'équipe pour l'instant</div>
+          <div class="empty-sub">Ajoute un motion designer, monteur ou administrateur avec le bouton ci-dessus.</div>
+        </div>
       </section>
 
       <!-- CLIENTS (CRM basique) -->
       <section id="view-clients" class="hidden">
         <div class="page-head"><h1>Clients</h1></div>
-        <div class="table-scroll">
+        <div class="table-scroll" id="clients-table-wrap">
         <table>
           <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th></tr></thead>
           <tbody id="clients-tbody"></tbody>
         </table>
         </div>
-        <div id="clients-empty" class="empty-state hidden">Aucun client pour l'instant.</div>
+        <div id="clients-empty" class="empty-state hidden">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="3.2"/><path d="M22 20v-1a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15A3.2 3.2 0 0 1 17.2 7a3.2 3.2 0 0 1-1.9 2.93"/></svg>
+          <div class="empty-title">Aucun client pour l'instant</div>
+          <div class="empty-sub">Les clients apparaîtront ici dès qu'ils créeront un compte, ou que tu en ajouteras un depuis un nouveau projet.</div>
+        </div>
       </section>
 
       <!-- PARAMÈTRES -->
@@ -808,9 +822,11 @@
       const clients = await api('/users/clients');
       const tbody = document.getElementById('clients-tbody');
       const empty = document.getElementById('clients-empty');
+      const tableWrap = document.getElementById('clients-table-wrap');
       tbody.innerHTML = '';
-      if (!clients.length) { empty.classList.remove('hidden'); return; }
+      if (!clients.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
       empty.classList.add('hidden');
+      tableWrap.classList.remove('hidden');
       clients.forEach(c => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>`;
@@ -827,9 +843,11 @@
       const team = await api('/users/team');
       const tbody = document.getElementById('team-tbody');
       const empty = document.getElementById('team-empty');
+      const tableWrap = document.getElementById('team-table-wrap');
       tbody.innerHTML = '';
-      if (!team.length) { empty.classList.remove('hidden'); return; }
+      if (!team.length) { empty.classList.remove('hidden'); tableWrap.classList.add('hidden'); return; }
       empty.classList.add('hidden');
+      tableWrap.classList.remove('hidden');
       team.forEach(m => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${escapeHtml(m.firstName + ' ' + m.lastName)}</td><td>${escapeHtml(m.email)}</td><td>${escapeHtml(m.phone || '—')}</td><td><span class="badge badge-${m.role==='ADMIN'?'DELIVERED':'IN_PRODUCTION'}">${m.role}</span></td><td>${m.projectCount}</td><td>${new Date(m.createdAt).toLocaleDateString('fr-FR')}</td>`;
