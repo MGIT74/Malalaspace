@@ -175,8 +175,8 @@
   .search-input-wrap input{padding-left:36px;}
   .view-toggle-btn{background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;}
   .view-toggle-btn.active{background:var(--surface);color:var(--text);border-radius:6px;}
-  .kanban-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;}
-  .kanban-col{flex:0 0 260px;background:var(--surface-alt);border-radius:var(--radius);padding:12px;max-height:calc(100vh - 260px);display:flex;flex-direction:column;}
+  .kanban-board{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:14px;}
+  .kanban-col{background:var(--surface-alt);border-radius:var(--radius);padding:12px;max-height:calc(100vh - 260px);display:flex;flex-direction:column;min-width:0;}
   .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;margin-bottom:10px;padding:0 2px;}
   .kanban-col-count{font-size:11px;color:var(--text-muted);background:var(--surface);padding:1px 7px;border-radius:10px;}
   .kanban-cards{overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
@@ -211,6 +211,8 @@
 
   /* ============ RESPONSIVE (mobile) ============ */
   @media (max-width: 768px){
+    .kanban-board{display:flex;overflow-x:auto;padding-bottom:8px;}
+    .kanban-col{flex:0 0 240px;}
     .topbar{padding:12px 16px;}
     .brand{font-size:17px;}
     #mobile-menu-btn{display:block !important;}
