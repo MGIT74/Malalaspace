@@ -3,13 +3,15 @@ const userController = require('../controllers/userController');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
-const { updateRoleSchema } = require('../validators/userValidator');
+const { updateRoleSchema, createTeamMemberSchema } = require('../validators/userValidator');
 
 const router = express.Router();
 
 router.use(authenticate);
 
 router.get('/clients', authorize('ADMIN', 'EMPLOYEE'), userController.listClients);
+router.get('/team', authorize('ADMIN', 'EMPLOYEE'), userController.listTeam);
+router.post('/team', authorize('ADMIN'), validate(createTeamMemberSchema), userController.createTeamMember);
 router.get('/', authorize('ADMIN'), userController.listAllUsers);
 router.put('/:id/role', authorize('ADMIN'), validate(updateRoleSchema), userController.updateRole);
 

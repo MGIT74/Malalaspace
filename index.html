@@ -348,6 +348,7 @@
       <aside class="sidebar" id="sidebar">
         <div class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg> Projets</div>
         <div class="nav-item" data-view="profile"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20a7 7 0 0 1 14 0"/></svg> Mon profil</div>
+        <div class="nav-item hidden" id="nav-team" data-view="team"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="7" rx="1.5"/><rect x="14" y="15" width="7" height="7" rx="1.5"/></svg> Équipe</div>
         <div class="nav-item hidden" id="nav-clients" data-view="clients"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="3.2"/><path d="M22 20v-1a3.7 3.7 0 0 0-2.7-3.55"/><path d="M15.3 4.15A3.2 3.2 0 0 1 17.2 7a3.2 3.2 0 0 1-1.9 2.93"/></svg> Clients</div>
         <div class="nav-section-label hidden" id="nav-admin-label">Administration</div>
         <div class="nav-item hidden" id="nav-settings" data-view="settings"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.3M12 18.7V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.3M18.7 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg> Paramètres</div>
@@ -404,6 +405,21 @@
           <input type="password" id="new-password" minlength="8" />
           <div class="save-row"><button class="btn btn-primary" id="save-password-btn">Modifier le mot de passe</button></div>
         </div>
+      </section>
+
+      <!-- ÉQUIPE -->
+      <section id="view-team" class="hidden">
+        <div class="page-head">
+          <h1>Équipe</h1>
+          <button class="btn btn-primary hidden" id="new-team-member-btn">+ Ajouter un membre</button>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Rôle</th><th>Projets assignés</th><th>Depuis</th></tr></thead>
+          <tbody id="team-tbody"></tbody>
+        </table>
+        </div>
+        <div id="team-empty" class="empty-state hidden">Aucun membre d'équipe pour l'instant.</div>
       </section>
 
       <!-- CLIENTS (CRM basique) -->
@@ -599,6 +615,35 @@
   </div>
 </div>
 
+<!-- New team member modal -->
+<div class="overlay hidden" id="new-team-overlay">
+  <div class="modal">
+    <h2>Ajouter un membre d'équipe</h2>
+    <form id="new-team-form">
+      <div class="field-row">
+        <div><label>Prénom *</label><input id="team-firstName" required /></div>
+        <div><label>Nom *</label><input id="team-lastName" required /></div>
+      </div>
+      <label>Email *</label>
+      <input type="email" id="team-email" required />
+      <label>Téléphone</label>
+      <input id="team-phone" />
+      <label>Rôle</label>
+      <select id="team-role">
+        <option value="EMPLOYEE">Employé (motion designer, monteur...)</option>
+        <option value="ADMIN">Administrateur</option>
+      </select>
+      <label>Mot de passe temporaire *</label>
+      <input type="password" id="team-password" required minlength="8" placeholder="À communiquer directement à la personne" />
+      <p class="save-hint">Le mot de passe n'est jamais envoyé par email — communiquez-le directement à la personne concernée.</p>
+      <div class="save-row">
+        <button type="button" class="btn btn-ghost" id="team-cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer le compte</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- New project modal -->
 <div class="overlay hidden" id="new-project-overlay">
   <div class="modal">
@@ -697,7 +742,7 @@
   }
 
   // ---------- Sidebar navigation ----------
-  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile'];
+  const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile', 'team'];
   function switchView(view){
     ALL_VIEWS.forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
@@ -714,6 +759,7 @@
       else if (view === 'clients') showClients();
       else if (view === 'settings') showSettings();
       else if (view === 'profile') showProfile();
+      else if (view === 'team') showTeam();
       closeMobileSidebar();
     });
   });
@@ -738,6 +784,7 @@
     const isAdmin = role === 'ADMIN';
     const isTeam = role === 'ADMIN' || role === 'EMPLOYEE';
     document.getElementById('nav-clients').classList.toggle('hidden', !isTeam);
+    document.getElementById('nav-team').classList.toggle('hidden', !isTeam);
     document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
     document.getElementById('nav-admin-label').classList.toggle('hidden', !isAdmin);
   }
@@ -771,6 +818,48 @@
       });
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  // ---------- Équipe ----------
+  async function showTeam(){
+    switchView('team');
+    document.getElementById('new-team-member-btn').classList.toggle('hidden', state.user.role !== 'ADMIN');
+    try {
+      const team = await api('/users/team');
+      const tbody = document.getElementById('team-tbody');
+      const empty = document.getElementById('team-empty');
+      tbody.innerHTML = '';
+      if (!team.length) { empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      team.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(m.firstName + ' ' + m.lastName)}</td><td>${escapeHtml(m.email)}</td><td>${escapeHtml(m.phone || '—')}</td><td><span class="badge badge-${m.role==='ADMIN'?'DELIVERED':'IN_PRODUCTION'}">${m.role}</span></td><td>${m.projectCount}</td><td>${new Date(m.createdAt).toLocaleDateString('fr-FR')}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  const teamOverlay = document.getElementById('new-team-overlay');
+  document.getElementById('new-team-member-btn').addEventListener('click', () => teamOverlay.classList.remove('hidden'));
+  document.getElementById('team-cancel').addEventListener('click', () => teamOverlay.classList.add('hidden'));
+  teamOverlay.addEventListener('click', (e) => { if (e.target === teamOverlay) teamOverlay.classList.add('hidden'); });
+
+  document.getElementById('new-team-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/users/team', { method:'POST', body: JSON.stringify({
+        firstName: document.getElementById('team-firstName').value,
+        lastName: document.getElementById('team-lastName').value,
+        email: document.getElementById('team-email').value,
+        phone: document.getElementById('team-phone').value || undefined,
+        role: document.getElementById('team-role').value,
+        password: document.getElementById('team-password').value,
+      })});
+      teamOverlay.classList.add('hidden');
+      e.target.reset();
+      toast('Membre ajouté à l\'équipe.');
+      showTeam();
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   async function showSettings(){
     switchView('settings');
