@@ -186,6 +186,15 @@
   .kanban-card .kc-meta{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-top:6px;}
   .kanban-card .kc-deadline{color:var(--amber);}
   .kanban-card .kc-deadline.overdue{color:var(--danger);}
+  .offer-card{background:var(--surface-alt);border:2px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:.15s;}
+  .offer-card:hover{border-color:#454b59;}
+  .offer-card.selected{border-color:var(--accent);background:rgba(10,132,255,.06);}
+  .offer-card h3{margin:0 0 4px;font-size:16px;}
+  .offer-card .offer-price{font-size:20px;font-weight:700;color:var(--text);margin:8px 0 2px;}
+  .offer-card .offer-delivery{font-size:12px;color:var(--text-muted);margin-bottom:12px;}
+  .offer-card ul{list-style:none;margin:0;padding:0;font-size:12px;color:var(--text-muted);max-height:220px;overflow-y:auto;}
+  .offer-card li{padding:4px 0;padding-left:20px;position:relative;line-height:1.4;}
+  .offer-card li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:700;}
 
   .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
   .video-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
@@ -572,6 +581,7 @@
             <div id="detail-company" style="color:var(--text-muted);font-size:14px;"></div>
           </div>
           <span id="detail-badge" class="badge"></span>
+          <span id="detail-offer-badge" class="badge hidden" style="background:var(--surface-alt);color:var(--text-muted);"></span>
           <button class="btn hidden" id="delete-project-btn" style="color:var(--danger);border-color:var(--danger-dim);">Supprimer</button>
         </div>
 
@@ -749,9 +759,24 @@
 
 <!-- New project modal -->
 <div class="overlay hidden" id="new-project-overlay">
-  <div class="modal">
-    <h2>Nouveau projet</h2>
-    <form id="new-project-form">
+  <div class="modal" id="new-project-modal" style="max-width:520px;">
+    <h2 id="np-step-title">Choisissez votre offre</h2>
+
+    <!-- Étape 1 : sélection de l'offre -->
+    <div id="np-step-offer">
+      <div id="offers-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px;"></div>
+      <div class="save-row">
+        <button type="button" class="btn btn-ghost" id="np-cancel">Annuler</button>
+        <button type="button" class="btn btn-primary" id="np-next-btn" disabled>Continuer</button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : infos projet -->
+    <form id="new-project-form" class="hidden">
+      <div id="selected-offer-recap" style="background:var(--surface-alt);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;">
+        <span id="selected-offer-recap-text"></span>
+        <span class="save-hint" id="np-back-to-offer" style="cursor:pointer;text-decoration:underline;">Changer</span>
+      </div>
       <div id="np-client-wrap" class="hidden">
         <label>Client *</label>
         <select id="np-clientId"></select>
@@ -767,7 +792,7 @@
       <label>Description du SaaS</label>
       <textarea id="np-saasDesc" rows="3"></textarea>
       <div class="save-row">
-        <button type="button" class="btn btn-ghost" id="np-cancel">Annuler</button>
+        <button type="button" class="btn btn-ghost" id="np-cancel-2">Annuler</button>
         <button type="submit" class="btn btn-primary">Créer le projet</button>
       </div>
     </form>
@@ -1494,6 +1519,48 @@
 
   // ---------- New project modal ----------
   const overlay = document.getElementById('new-project-overlay');
+  let selectedOfferId = null;
+  let offersCache = null;
+
+  function formatOfferPrice(offer){
+    return offer.price.toLocaleString('fr-FR') + ' ' + (offer.currency === 'MGA' ? 'Ar' : offer.currency);
+  }
+
+  async function renderOffersGrid(){
+    const grid = document.getElementById('offers-grid');
+    grid.innerHTML = '<div class="save-hint">Chargement des offres...</div>';
+    try {
+      if (!offersCache) offersCache = await api('/offers');
+      grid.innerHTML = '';
+      offersCache.forEach(offer => {
+        const card = document.createElement('div');
+        card.className = 'offer-card' + (selectedOfferId === offer.id ? ' selected' : '');
+        card.dataset.offerId = offer.id;
+        card.innerHTML = `
+          <h3>${escapeHtml(offer.name)}</h3>
+          <div class="offer-price">${formatOfferPrice(offer)}</div>
+          <div class="offer-delivery">Livraison : ${escapeHtml(offer.deliveryEstimate)}</div>
+          <ul>${offer.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+        `;
+        card.addEventListener('click', () => {
+          selectedOfferId = offer.id;
+          document.querySelectorAll('.offer-card').forEach(c => c.classList.toggle('selected', c.dataset.offerId === offer.id));
+          document.getElementById('np-next-btn').disabled = false;
+        });
+        grid.appendChild(card);
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  function resetProjectModal(){
+    selectedOfferId = null;
+    document.getElementById('np-step-offer').classList.remove('hidden');
+    document.getElementById('new-project-form').classList.add('hidden');
+    document.getElementById('np-step-title').textContent = 'Choisissez votre offre';
+    document.getElementById('new-project-modal').style.maxWidth = '820px';
+    document.getElementById('np-next-btn').disabled = true;
+  }
+
   document.getElementById('new-project-btn').addEventListener('click', async () => {
     if (state.user.role === 'ADMIN') {
       document.getElementById('np-client-wrap').classList.remove('hidden');
@@ -1502,10 +1569,35 @@
         document.getElementById('np-clientId').innerHTML = clients.map(c => `<option value="${c.id}">${escapeHtml(c.firstName+' '+c.lastName)} (${escapeHtml(c.email)})</option>`).join('');
       } catch(err){ toast(err.message, 'error'); }
     }
+    resetProjectModal();
+    renderOffersGrid();
     overlay.classList.remove('hidden');
   });
-  document.getElementById('np-cancel').addEventListener('click', () => overlay.classList.add('hidden'));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+
+  function closeProjectModal(){
+    overlay.classList.add('hidden');
+    resetProjectModal();
+  }
+  document.getElementById('np-cancel').addEventListener('click', closeProjectModal);
+  document.getElementById('np-cancel-2').addEventListener('click', closeProjectModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeProjectModal(); });
+
+  document.getElementById('np-next-btn').addEventListener('click', () => {
+    if (!selectedOfferId) return;
+    const offer = offersCache.find(o => o.id === selectedOfferId);
+    document.getElementById('selected-offer-recap-text').textContent = `${offer.name} — ${formatOfferPrice(offer)}`;
+    document.getElementById('np-step-offer').classList.add('hidden');
+    document.getElementById('new-project-form').classList.remove('hidden');
+    document.getElementById('np-step-title').textContent = 'Informations du projet';
+    document.getElementById('new-project-modal').style.maxWidth = '520px';
+  });
+
+  document.getElementById('np-back-to-offer').addEventListener('click', () => {
+    document.getElementById('np-step-offer').classList.remove('hidden');
+    document.getElementById('new-project-form').classList.add('hidden');
+    document.getElementById('np-step-title').textContent = 'Choisissez votre offre';
+    document.getElementById('new-project-modal').style.maxWidth = '820px';
+  });
 
   document.getElementById('new-project-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1516,6 +1608,7 @@
         website: document.getElementById('np-website').value || undefined,
         industry: document.getElementById('np-industry').value || undefined,
         saasDesc: document.getElementById('np-saasDesc').value || undefined,
+        offerType: selectedOfferId || undefined,
       };
       let project;
       if (state.user.role === 'ADMIN') {
@@ -1525,7 +1618,7 @@
       } else {
         project = await api('/projects', { method:'POST', body: JSON.stringify(payload) });
       }
-      overlay.classList.add('hidden');
+      closeProjectModal();
       e.target.reset();
       document.getElementById('np-client-wrap').classList.add('hidden');
       toast('Projet créé !');
@@ -1556,6 +1649,14 @@
       const badge = document.getElementById('detail-badge');
       badge.className = 'badge badge-' + p.status;
       badge.textContent = PROJECT_STATUS_LABELS[p.status] || p.status;
+
+      const offerBadge = document.getElementById('detail-offer-badge');
+      if (p.offerType) {
+        offerBadge.textContent = p.offerType === 'PREMIUM' ? 'Offre Premium' : 'Offre Standard';
+        offerBadge.classList.remove('hidden');
+      } else {
+        offerBadge.classList.add('hidden');
+      }
 
       renderScrubber(p.steps || [], document.getElementById('detail-scrubber'));
       const doneCount = (p.steps||[]).filter(s=>s.status==='DONE').length;

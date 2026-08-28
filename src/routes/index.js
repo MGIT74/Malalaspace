@@ -5,6 +5,7 @@ const userRoutes = require('./userRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const paymentRoutes = require('./paymentRoutes');
+const offerRoutes = require('./offerRoutes');
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.use('/users', userRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/offers', offerRoutes);
 
 // Phase 2+: router.use('/files', fileRoutes); router.use('/videos', ...); etc.
 

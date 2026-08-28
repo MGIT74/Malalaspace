@@ -14,6 +14,7 @@ const adminCreateProjectSchema = z.object({
   saasDesc: z.string().max(5000).optional(),
   problemSolved: z.string().max(5000).optional(),
   targetAudience: z.string().max(2000).optional(),
+  offerType: z.enum(['STANDARD', 'PREMIUM']).optional(),
 });
 
 module.exports = { addStepSchema, adminCreateProjectSchema };

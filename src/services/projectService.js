@@ -84,6 +84,7 @@ async function createProjectInternal(clientId, data) {
       saasDesc: data.saasDesc || null,
       problemSolved: data.problemSolved || null,
       targetAudience: data.targetAudience || null,
+      offerType: data.offerType || null,
       status: 'NEW',
       progress: 0,
       steps: {
