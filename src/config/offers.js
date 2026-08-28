@@ -9,6 +9,7 @@ const DEFAULT_OFFERS = [
     price: 420000,
     currency: 'MGA', // Ariary
     deliveryEstimate: '10 - 15 jours',
+    videoUrl: '',
     features: [
       'Analyse du produit SaaS',
       'Compréhension de la cible',
@@ -32,6 +33,7 @@ const DEFAULT_OFFERS = [
     price: 920000,
     currency: 'MGA',
     deliveryEstimate: '12 - 18 jours',
+    videoUrl: '',
     features: [
       'Conception stratégique (analyse approfondie du produit SaaS)',
       'Direction artistique complète (définition du style visuel)',
