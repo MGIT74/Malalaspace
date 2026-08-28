@@ -706,6 +706,18 @@
   </div>
 </div>
 
+<!-- Confirm modal (remplace le confirm() natif du navigateur) -->
+<div class="overlay hidden" id="confirm-overlay">
+  <div class="modal" style="max-width:420px;">
+    <h2 id="confirm-title" style="font-size:17px;">Confirmer</h2>
+    <p id="confirm-message" style="color:var(--text-muted);font-size:14px;line-height:1.5;margin:14px 0 24px;"></p>
+    <div class="save-row" style="justify-content:flex-end;">
+      <button class="btn" id="confirm-cancel-btn">Annuler</button>
+      <button class="btn btn-primary" id="confirm-ok-btn">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <!-- New team member modal -->
 <div class="overlay hidden" id="new-team-overlay">
   <div class="modal">
@@ -788,6 +800,36 @@
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3200);
+  }
+
+  // ---------- Modale de confirmation personnalisée (remplace confirm()) ----------
+  function confirmDialog(message, { title = 'Confirmer', danger = false, confirmLabel = 'Confirmer' } = {}){
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('confirm-overlay');
+      const okBtn = document.getElementById('confirm-ok-btn');
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      okBtn.textContent = confirmLabel;
+      okBtn.style.background = danger ? 'var(--danger)' : 'var(--accent)';
+      okBtn.style.borderColor = danger ? 'var(--danger)' : 'var(--accent)';
+      overlay.classList.remove('hidden');
+
+      function cleanup(result){
+        overlay.classList.add('hidden');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        overlay.removeEventListener('click', onOverlay);
+        resolve(result);
+      }
+      function onOk(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      function onOverlay(e){ if (e.target === overlay) cleanup(false); }
+
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      overlay.addEventListener('click', onOverlay);
+    });
   }
 
   // ---------- API wrapper avec refresh automatique ----------
@@ -1135,7 +1177,7 @@
       select.addEventListener('change', async () => {
         const userId = select.dataset.userId;
         const newRole = select.value;
-        if (!confirm(`Changer le rôle de cet utilisateur en ${newRole} ?`)) { loadUsersList(); return; }
+        if (!(await confirmDialog(`Changer le rôle de cet utilisateur en ${newRole} ?`, { title: 'Changer le rôle' }))) { loadUsersList(); return; }
         try {
           await api('/users/' + userId + '/role', { method:'PUT', body: JSON.stringify({ role: newRole }) });
           toast('Rôle mis à jour.');
@@ -1577,7 +1619,7 @@
         const delBtn = row.querySelector('[data-delete-step]');
         if (delBtn) {
           delBtn.addEventListener('click', async () => {
-            if (!confirm('Supprimer cette étape ?')) return;
+            if (!(await confirmDialog('Supprimer cette étape de la timeline ?', { title: 'Supprimer l\'étape', danger: true, confirmLabel: 'Supprimer' }))) return;
             try {
               await api('/projects/' + id + '/steps/' + s.id, { method:'DELETE' });
               loadProjectDetail(id);
@@ -1592,7 +1634,7 @@
   }
 
   document.getElementById('delete-project-btn').addEventListener('click', async () => {
-    if (!confirm('Supprimer définitivement ce projet et toutes ses données (fichiers, vidéos, commentaires) ? Cette action est irréversible.')) return;
+    if (!(await confirmDialog('Supprimer définitivement ce projet et toutes ses données (fichiers, vidéos, commentaires) ? Cette action est irréversible.', { title: 'Supprimer le projet', danger: true, confirmLabel: 'Supprimer définitivement' }))) return;
     try {
       await api('/projects/' + state.currentProject.id, { method:'DELETE' });
       toast('Projet supprimé.');
@@ -1692,7 +1734,7 @@
             <button data-file-id="${f.id}">Supprimer</button>
           </td>`;
         tr.querySelector('button').addEventListener('click', async () => {
-          if (!confirm('Supprimer ce fichier ?')) return;
+          if (!(await confirmDialog('Supprimer ce fichier ?', { title: 'Supprimer le fichier', danger: true, confirmLabel: 'Supprimer' }))) return;
           try { await api('/projects/' + projectId + '/files/' + f.id, { method:'DELETE' }); loadFiles(projectId); }
           catch(err){ toast(err.message, 'error'); }
         });
@@ -1896,7 +1938,7 @@
         const validateBtn = card.querySelector('.validate-btn');
         if (validateBtn) {
           validateBtn.addEventListener('click', async () => {
-            if (!confirm('Êtes-vous sûr de vouloir valider cette version ?')) return;
+            if (!(await confirmDialog('Une fois validée, cette version ne pourra plus être modifiée. Confirmer la validation ?', { title: 'Valider cette version' }))) return;
             try {
               await api('/projects/' + projectId + '/videos/' + v.id + '/validate', { method:'POST' });
               toast('Version validée !');
