@@ -1177,14 +1177,18 @@
       offersCache = offers;
       grid.innerHTML = '';
       offers.forEach(offer => {
-        const embedUrl = toEmbedUrl(offer.videoUrl);
+        const raw = (offer.videoUrl || '').trim();
+        const isRawIframe = /^<iframe/i.test(raw);
+        const embedUrl = isRawIframe ? null : toEmbedUrl(raw);
         const card = document.createElement('div');
         card.className = 'showcase-card';
         card.innerHTML = `
           <div class="showcase-video">
-            ${embedUrl
-              ? `<iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
-              : `<div class="showcase-video-empty">${ICON_SVG.play}<span>Vidéo à venir</span></div>`}
+            ${isRawIframe
+              ? raw
+              : embedUrl
+                ? `<iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
+                : `<div class="showcase-video-empty">${ICON_SVG.play}<span>Vidéo à venir</span></div>`}
           </div>
           <div class="showcase-body">
             <h3>${escapeHtml(offer.name)}</h3>
@@ -1264,8 +1268,8 @@
           </div>
           <label>Délai de livraison</label>
           <input class="offer-edit-delivery" value="${escapeHtml(offer.deliveryEstimate)}" />
-          <label>Vidéo de présentation (lien YouTube ou Vimeo)</label>
-          <input class="offer-edit-video" value="${escapeHtml(offer.videoUrl || '')}" placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/..." />
+          <label>Vidéo de présentation</label>
+          <textarea class="offer-edit-video" rows="2" placeholder="Lien YouTube/Vimeo (ex: https://www.youtube.com/watch?v=...) OU collez directement un code <iframe>...</iframe> fourni par la plateforme">${escapeHtml(offer.videoUrl || '')}</textarea>
           <label>Prestations incluses (une par ligne)</label>
           <textarea class="offer-edit-features" rows="10">${escapeHtml(offer.features.join('\n'))}</textarea>
           <div class="save-row"><button class="btn btn-primary offer-save-btn">Enregistrer ${escapeHtml(offer.name)}</button></div>

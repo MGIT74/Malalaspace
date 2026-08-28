@@ -6,7 +6,8 @@ const offerItemSchema = z.object({
   price: z.number().int().min(0),
   currency: z.string().min(1).max(10),
   deliveryEstimate: z.string().min(1).max(100),
-  videoUrl: z.union([z.string().url(), z.literal('')]).optional(),
+  // Accepte soit une URL simple (YouTube/Vimeo), soit un code <iframe> complet collé par l'admin
+  videoUrl: z.string().max(2000).optional().or(z.literal('')),
   features: z.array(z.string().min(1).max(300)).min(1).max(40),
 });
 
