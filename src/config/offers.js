@@ -2,7 +2,7 @@
  * Catalogue des offres. Le prix est affiché à titre indicatif pour l'instant
  * (aucune facturation réelle tant que Stripe n'est pas branché — Phase 3).
  */
-const OFFERS = [
+const DEFAULT_OFFERS = [
   {
     id: 'STANDARD',
     name: 'Offre Standard',
@@ -54,7 +54,7 @@ const OFFERS = [
 ];
 
 function getOffer(id) {
-  return OFFERS.find((o) => o.id === id) || null;
+  return DEFAULT_OFFERS.find((o) => o.id === id) || null;
 }
 
-module.exports = { OFFERS, getOffer };
+module.exports = { DEFAULT_OFFERS, getOffer };

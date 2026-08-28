@@ -1,8 +1,14 @@
 const asyncHandler = require('../utils/asyncHandler');
-const { OFFERS } = require('../config/offers');
+const offerService = require('../services/offerService');
 
 const list = asyncHandler(async (req, res) => {
-  res.status(200).json({ success: true, data: OFFERS });
+  const offers = await offerService.getOffers();
+  res.status(200).json({ success: true, data: offers });
 });
 
-module.exports = { list };
+const update = asyncHandler(async (req, res) => {
+  const offers = await offerService.updateOffers(req.user, req.body);
+  res.status(200).json({ success: true, data: offers });
+});
+
+module.exports = { list, update };

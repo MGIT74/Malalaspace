@@ -532,6 +532,12 @@
           <div class="tab active" data-settings-tab="integrations">Intégrations</div>
           <div class="tab" data-settings-tab="smtp">Email SMTP</div>
           <div class="tab" data-settings-tab="users">Utilisateurs</div>
+          <div class="tab" data-settings-tab="offers">Prestations</div>
+        </div>
+
+        <div id="settings-tab-offers" class="hidden">
+          <p class="save-hint" style="margin-bottom:16px;">Ces offres sont proposées au client à la création d'un nouveau projet. Le prix est affiché à titre indicatif (facturation via Stripe à venir).</p>
+          <div id="offers-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;"></div>
         </div>
 
         <div id="settings-tab-users" class="hidden">
@@ -1142,6 +1148,59 @@
     } catch(err){ toast(err.message, 'error'); }
   }
 
+  // ---------- Prestations (catalogue d'offres, admin) ----------
+  async function loadOffersEditor(){
+    const container = document.getElementById('offers-editor');
+    container.innerHTML = '<div class="save-hint">Chargement...</div>';
+    try {
+      const offers = await api('/offers');
+      container.innerHTML = '';
+      offers.forEach(offer => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;';
+        card.innerHTML = `
+          <label style="margin-top:0">Nom de l'offre</label>
+          <input class="offer-edit-name" value="${escapeHtml(offer.name)}" />
+          <div class="field-row">
+            <div><label>Prix</label><input type="number" class="offer-edit-price" value="${offer.price}" /></div>
+            <div><label>Devise</label><input class="offer-edit-currency" value="${escapeHtml(offer.currency)}" /></div>
+          </div>
+          <label>Délai de livraison</label>
+          <input class="offer-edit-delivery" value="${escapeHtml(offer.deliveryEstimate)}" />
+          <label>Prestations incluses (une par ligne)</label>
+          <textarea class="offer-edit-features" rows="10">${escapeHtml(offer.features.join('\n'))}</textarea>
+          <div class="save-row"><button class="btn btn-primary offer-save-btn" data-offer-id="${offer.id}">Enregistrer ${escapeHtml(offer.name)}</button></div>
+        `;
+        card.dataset.offerId = offer.id;
+        container.appendChild(card);
+      });
+
+      container.querySelectorAll('.offer-save-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            const allOffers = await api('/offers'); // base à jour, on ne modifie que l'offre concernée
+            const card = btn.closest('[data-offer-id]');
+            const offerId = card.dataset.offerId;
+            const updated = allOffers.map(o => {
+              if (o.id !== offerId) return o;
+              return {
+                id: o.id,
+                name: card.querySelector('.offer-edit-name').value,
+                price: parseInt(card.querySelector('.offer-edit-price').value, 10) || 0,
+                currency: card.querySelector('.offer-edit-currency').value,
+                deliveryEstimate: card.querySelector('.offer-edit-delivery').value,
+                features: card.querySelector('.offer-edit-features').value.split('\n').map(f => f.trim()).filter(Boolean),
+              };
+            });
+            await api('/offers', { method:'PUT', body: JSON.stringify(updated) });
+            toast('Prestations mises à jour.');
+            offersCache = null; // force le rechargement dans le modal nouveau projet
+          } catch(err){ toast(err.message, 'error'); }
+        });
+      });
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
   async function showSettings(){
     switchView('settings');
     try {
@@ -1168,10 +1227,11 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-settings .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['integrations','smtp','users'].forEach(name => {
+      ['integrations','smtp','users','offers'].forEach(name => {
         document.getElementById('settings-tab-' + name).classList.toggle('hidden', name !== tab.dataset.settingsTab);
       });
       if (tab.dataset.settingsTab === 'users') loadUsersList();
+      if (tab.dataset.settingsTab === 'offers') loadOffersEditor();
     });
   });
 
