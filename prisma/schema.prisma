@@ -13,11 +13,6 @@ enum Role {
   ADMIN
 }
 
-enum OfferType {
-  STANDARD
-  PREMIUM
-}
-
 enum ProjectStatus {
   NEW
   BRIEF_PENDING
@@ -131,7 +126,7 @@ model Project {
   problemSolved  String?       @db.Text @map("problem_solved")
   targetAudience String?       @db.Text @map("target_audience")
   description    String?       @db.Text
-  offerType      OfferType?    @map("offer_type")
+  offerType      String?       @map("offer_type") // id libre de l'offre choisie (catalogue dynamique)
   status         ProjectStatus @default(NEW)
   progress       Int           @default(0)
   deadline       DateTime?

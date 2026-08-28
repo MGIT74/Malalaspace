@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const offerItemSchema = z.object({
-  id: z.enum(['STANDARD', 'PREMIUM']),
+  id: z.string().min(1).max(50).regex(/^[a-zA-Z0-9_-]+$/, 'Identifiant invalide'),
   name: z.string().min(1).max(100),
   price: z.number().int().min(0),
   currency: z.string().min(1).max(10),
@@ -11,6 +11,6 @@ const offerItemSchema = z.object({
   features: z.array(z.string().min(1).max(300)).min(1).max(40),
 });
 
-const updateOffersSchema = z.array(offerItemSchema).length(2);
+const updateOffersSchema = z.array(offerItemSchema).min(1).max(20);
 
 module.exports = { updateOffersSchema };

@@ -209,6 +209,21 @@
   .showcase-body li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:700;}
   .showcase-order-btn{width:100%;padding:12px;font-size:14px;}
 
+  .showcase-list{display:flex;flex-direction:column;gap:12px;}
+  .showcase-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .showcase-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;cursor:pointer;}
+  .showcase-header:hover{background:var(--surface-alt);}
+  .showcase-header h3{margin:0 0 4px;font-size:17px;}
+  .showcase-header .showcase-delivery{font-size:12px;color:var(--text-muted);margin:0;}
+  .showcase-header .showcase-price{font-size:19px;font-weight:700;}
+  .showcase-chevron{color:var(--text-muted);transition:transform .2s;}
+  .showcase-card.open .showcase-chevron{transform:rotate(180deg);}
+  .showcase-collapse{padding:0 22px 22px;}
+  .showcase-collapse .showcase-video{border-radius:8px;overflow:hidden;margin-bottom:16px;}
+  .showcase-collapse ul{list-style:none;margin:0 0 18px;padding:0;font-size:13px;color:var(--text-muted);}
+  .showcase-collapse li{padding:5px 0;padding-left:22px;position:relative;line-height:1.45;}
+  .showcase-collapse li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:700;}
+
   .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
   .video-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
   .video-card-head h4{margin:0;font-size:15px;}
@@ -493,7 +508,7 @@
       <!-- VITRINE PRESTATIONS -->
       <section id="view-showcase" class="hidden">
         <div class="page-head"><h1>Nos prestations</h1></div>
-        <div id="showcase-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:24px;"></div>
+        <div id="showcase-grid"></div>
       </section>
 
       <!-- CALENDRIER -->
@@ -558,6 +573,10 @@
         <div id="settings-tab-offers" class="hidden">
           <p class="save-hint" style="margin-bottom:16px;">Ces offres sont proposées au client à la création d'un nouveau projet. Le prix est affiché à titre indicatif (facturation via Stripe à venir).</p>
           <div id="offers-editor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;"></div>
+          <div class="save-row">
+            <button class="btn" id="add-offer-btn">+ Ajouter une offre</button>
+            <button class="btn btn-primary" id="save-offers-btn">Enregistrer toutes les prestations</button>
+          </div>
         </div>
 
         <div id="settings-tab-users" class="hidden">
@@ -1171,6 +1190,7 @@
   async function showShowcase(){
     switchView('showcase');
     const grid = document.getElementById('showcase-grid');
+    grid.className = 'showcase-list';
     grid.innerHTML = '<div class="save-hint">Chargement...</div>';
     try {
       const offers = await api('/offers');
@@ -1183,25 +1203,39 @@
         const card = document.createElement('div');
         card.className = 'showcase-card';
         card.innerHTML = `
-          <div class="showcase-video">
-            ${isRawIframe
-              ? raw
-              : embedUrl
-                ? `<iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
-                : `<div class="showcase-video-empty">${ICON_SVG.play}<span>Vidéo à venir</span></div>`}
+          <div class="showcase-header">
+            <div>
+              <h3>${escapeHtml(offer.name)}</h3>
+              <div class="showcase-delivery">Livraison : ${escapeHtml(offer.deliveryEstimate)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;">
+              <div class="showcase-price">${formatOfferPrice(offer)}</div>
+              <svg class="showcase-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
           </div>
-          <div class="showcase-body">
-            <h3>${escapeHtml(offer.name)}</h3>
-            <div class="showcase-price">${formatOfferPrice(offer)}</div>
-            <div class="showcase-delivery">Livraison : ${escapeHtml(offer.deliveryEstimate)}</div>
-            <ul>${offer.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
-            <button class="btn btn-primary showcase-order-btn" data-offer-id="${offer.id}">Commander cette offre</button>
+          <div class="showcase-collapse hidden">
+            <div class="showcase-video">
+              ${isRawIframe
+                ? raw
+                : embedUrl
+                  ? `<iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
+                  : `<div class="showcase-video-empty">${ICON_SVG.play}<span>Vidéo à venir</span></div>`}
+            </div>
+            <div class="showcase-body">
+              <ul>${offer.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+              <button class="btn btn-primary showcase-order-btn" data-offer-id="${offer.id}">Commander cette offre</button>
+            </div>
           </div>
         `;
+        card.querySelector('.showcase-header').addEventListener('click', () => {
+          card.classList.toggle('open');
+          card.querySelector('.showcase-collapse').classList.toggle('hidden');
+        });
+        card.querySelector('.showcase-order-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          startOrderFlow(offer.id);
+        });
         grid.appendChild(card);
-      });
-      grid.querySelectorAll('.showcase-order-btn').forEach(btn => {
-        btn.addEventListener('click', () => startOrderFlow(btn.dataset.offerId));
       });
     } catch(err){ toast(err.message, 'error'); }
   }
@@ -1250,58 +1284,80 @@
   }
 
   // ---------- Prestations (catalogue d'offres, admin) ----------
+  let editableOffers = [];
+
+  function renderOffersEditorCards(){
+    const container = document.getElementById('offers-editor');
+    container.innerHTML = '';
+    editableOffers.forEach((offer, index) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;';
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <label style="margin-top:0;flex:1;">Nom de l'offre</label>
+          <button type="button" class="offer-remove-btn" data-index="${index}" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;text-decoration:underline;">Supprimer cette offre</button>
+        </div>
+        <input class="offer-edit-name" data-index="${index}" value="${escapeHtml(offer.name)}" />
+        <div class="field-row">
+          <div><label>Prix</label><input type="number" class="offer-edit-price" data-index="${index}" value="${offer.price}" /></div>
+          <div><label>Devise</label><input class="offer-edit-currency" data-index="${index}" value="${escapeHtml(offer.currency)}" /></div>
+        </div>
+        <label>Délai de livraison</label>
+        <input class="offer-edit-delivery" data-index="${index}" value="${escapeHtml(offer.deliveryEstimate)}" />
+        <label>Vidéo de présentation</label>
+        <textarea class="offer-edit-video" data-index="${index}" rows="2" placeholder="Lien YouTube/Vimeo (ex: https://www.youtube.com/watch?v=...) OU collez directement un code <iframe>...</iframe> fourni par la plateforme">${escapeHtml(offer.videoUrl || '')}</textarea>
+        <label>Prestations incluses (une par ligne)</label>
+        <textarea class="offer-edit-features" data-index="${index}" rows="10">${escapeHtml((offer.features||[]).join('\n'))}</textarea>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll('.offer-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!(await confirmDialog('Supprimer cette offre du catalogue ?', { title: 'Supprimer l\'offre', danger: true, confirmLabel: 'Supprimer' }))) return;
+        editableOffers.splice(Number(btn.dataset.index), 1);
+        renderOffersEditorCards();
+      });
+    });
+  }
+
+  function slugify(text){
+    return (text || 'offre').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'offre';
+  }
+
+  document.getElementById('add-offer-btn').addEventListener('click', () => {
+    const baseId = slugify('nouvelle_offre');
+    let id = baseId, i = 1;
+    while (editableOffers.some(o => o.id === id)) { id = baseId + '_' + (i++); }
+    editableOffers.push({ id, name: 'Nouvelle offre', price: 0, currency: 'MGA', deliveryEstimate: '', videoUrl: '', features: ['Prestation à préciser'] });
+    renderOffersEditorCards();
+  });
+
+  document.getElementById('save-offers-btn').addEventListener('click', async () => {
+    try {
+      // Recueille les valeurs actuelles des champs (y compris celles pas encore committées dans editableOffers)
+      document.querySelectorAll('.offer-edit-name').forEach(el => editableOffers[el.dataset.index].name = el.value);
+      document.querySelectorAll('.offer-edit-price').forEach(el => editableOffers[el.dataset.index].price = parseInt(el.value, 10) || 0);
+      document.querySelectorAll('.offer-edit-currency').forEach(el => editableOffers[el.dataset.index].currency = el.value);
+      document.querySelectorAll('.offer-edit-delivery').forEach(el => editableOffers[el.dataset.index].deliveryEstimate = el.value);
+      document.querySelectorAll('.offer-edit-video').forEach(el => editableOffers[el.dataset.index].videoUrl = el.value);
+      document.querySelectorAll('.offer-edit-features').forEach(el => {
+        editableOffers[el.dataset.index].features = el.value.split('\n').map(f => f.trim()).filter(Boolean);
+      });
+
+      await api('/offers', { method:'PUT', body: JSON.stringify(editableOffers) });
+      toast('Prestations mises à jour.');
+      offersCache = null; // force le rechargement dans le modal nouveau projet et la vitrine
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
   async function loadOffersEditor(){
     const container = document.getElementById('offers-editor');
     container.innerHTML = '<div class="save-hint">Chargement...</div>';
     try {
-      const offers = await api('/offers');
-      container.innerHTML = '';
-      offers.forEach(offer => {
-        const card = document.createElement('div');
-        card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;';
-        card.innerHTML = `
-          <label style="margin-top:0">Nom de l'offre</label>
-          <input class="offer-edit-name" value="${escapeHtml(offer.name)}" />
-          <div class="field-row">
-            <div><label>Prix</label><input type="number" class="offer-edit-price" value="${offer.price}" /></div>
-            <div><label>Devise</label><input class="offer-edit-currency" value="${escapeHtml(offer.currency)}" /></div>
-          </div>
-          <label>Délai de livraison</label>
-          <input class="offer-edit-delivery" value="${escapeHtml(offer.deliveryEstimate)}" />
-          <label>Vidéo de présentation</label>
-          <textarea class="offer-edit-video" rows="2" placeholder="Lien YouTube/Vimeo (ex: https://www.youtube.com/watch?v=...) OU collez directement un code <iframe>...</iframe> fourni par la plateforme">${escapeHtml(offer.videoUrl || '')}</textarea>
-          <label>Prestations incluses (une par ligne)</label>
-          <textarea class="offer-edit-features" rows="10">${escapeHtml(offer.features.join('\n'))}</textarea>
-          <div class="save-row"><button class="btn btn-primary offer-save-btn">Enregistrer ${escapeHtml(offer.name)}</button></div>
-        `;
-        card.dataset.offerId = offer.id;
-        container.appendChild(card);
-      });
-
-      container.querySelectorAll('.offer-save-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            const allOffers = await api('/offers'); // base à jour, on ne modifie que l'offre concernée
-            const card = btn.closest('div[data-offer-id]');
-            const offerId = card.dataset.offerId;
-            const updated = allOffers.map(o => {
-              if (o.id !== offerId) return o;
-              return {
-                id: o.id,
-                name: card.querySelector('.offer-edit-name').value,
-                price: parseInt(card.querySelector('.offer-edit-price').value, 10) || 0,
-                currency: card.querySelector('.offer-edit-currency').value,
-                deliveryEstimate: card.querySelector('.offer-edit-delivery').value,
-                videoUrl: card.querySelector('.offer-edit-video').value || '',
-                features: card.querySelector('.offer-edit-features').value.split('\n').map(f => f.trim()).filter(Boolean),
-              };
-            });
-            await api('/offers', { method:'PUT', body: JSON.stringify(updated) });
-            toast('Prestations mises à jour.');
-            offersCache = null; // force le rechargement dans le modal nouveau projet et la vitrine
-          } catch(err){ toast(err.message, 'error'); }
-        });
-      });
+      editableOffers = await api('/offers');
+      renderOffersEditorCards();
     } catch(err){ toast(err.message, 'error'); }
   }
 
