@@ -570,7 +570,7 @@
         </div>
         <div class="table-scroll" id="clients-table-wrap">
         <table>
-          <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th></tr></thead>
+          <thead><tr><th>Nom</th><th>Entreprise</th><th>Email</th><th>Téléphone</th><th>Projets</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr></thead>
           <tbody id="clients-tbody"></tbody>
         </table>
         </div>
@@ -627,7 +627,7 @@
           </div>
           <div class="table-scroll">
           <table>
-            <thead><tr><th>Nom</th><th>Email</th><th>Entreprise</th><th>Rôle</th></tr></thead>
+            <thead><tr><th>Nom</th><th>Email</th><th>Entreprise</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody id="users-tbody"></tbody>
           </table>
           </div>
@@ -1093,8 +1093,35 @@
     tableWrap.classList.remove('hidden');
     clients.forEach(c => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>`;
+      const statusCell = c.isActive
+        ? `<span class="badge badge-READY_FOR_DELIVERY">Actif</span>`
+        : `<span class="badge badge-CLIENT_WAITING">Suspendu</span>`;
+      const actionsCell = `<button class="btn-ghost client-suspend-btn" data-user-id="${c.id}" data-active="${c.isActive}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:underline;margin-right:10px;">${c.isActive ? 'Suspendre' : 'Réactiver'}</button><button class="btn-ghost client-delete-btn" data-user-id="${c.id}" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;text-decoration:underline;">Supprimer</button>`;
+      tr.innerHTML = `<td>${escapeHtml(c.firstName + ' ' + c.lastName)}</td><td>${escapeHtml(c.company || '—')}</td><td>${escapeHtml(c.email)}</td><td>${escapeHtml(c.phone || '—')}</td><td>${c.projectCount}</td><td>${new Date(c.createdAt).toLocaleDateString('fr-FR')}</td><td>${statusCell}</td><td>${actionsCell}</td>`;
       tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.client-suspend-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const willActivate = btn.dataset.active === 'false';
+        const label = willActivate ? 'réactiver' : 'suspendre';
+        if (!(await confirmDialog(`Confirmer : ${label} ce client ?${!willActivate ? ' Il ne pourra plus se connecter.' : ''}`, { title: willActivate ? 'Réactiver le client' : 'Suspendre le client', danger: !willActivate, confirmLabel: willActivate ? 'Réactiver' : 'Suspendre' }))) return;
+        try {
+          await api('/users/' + btn.dataset.userId + '/status', { method:'PATCH', body: JSON.stringify({ isActive: willActivate }) });
+          toast(willActivate ? 'Client réactivé.' : 'Client suspendu.');
+          showClients();
+        } catch(err){ toast(err.message, 'error'); }
+      });
+    });
+    tbody.querySelectorAll('.client-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!(await confirmDialog('Supprimer définitivement ce client ? Cette action est irréversible.', { title: 'Supprimer le client', danger: true, confirmLabel: 'Supprimer' }))) return;
+        try {
+          await api('/users/' + btn.dataset.userId, { method:'DELETE' });
+          toast('Client supprimé.');
+          showClients();
+        } catch(err){ toast(err.message, 'error'); }
+      });
     });
   }
 
@@ -1615,7 +1642,13 @@
             <option value="EMPLOYEE" ${u.role==='EMPLOYEE'?'selected':''}>EMPLOYEE</option>
             <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
           </select>`;
-      tr.innerHTML = `<td>${escapeHtml(u.firstName + ' ' + u.lastName)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.company || '—')}</td><td>${roleCell}</td>`;
+      const statusCell = u.isActive
+        ? `<span class="badge badge-READY_FOR_DELIVERY">Actif</span>`
+        : `<span class="badge badge-CLIENT_WAITING">Suspendu</span>`;
+      const actionsCell = isSelf
+        ? '<span class="save-hint">—</span>'
+        : `<button class="btn-ghost user-suspend-btn" data-user-id="${u.id}" data-active="${u.isActive}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:underline;margin-right:10px;">${u.isActive ? 'Suspendre' : 'Réactiver'}</button><button class="btn-ghost user-delete-btn" data-user-id="${u.id}" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;text-decoration:underline;">Supprimer</button>`;
+      tr.innerHTML = `<td>${escapeHtml(u.firstName + ' ' + u.lastName)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.company || '—')}</td><td>${roleCell}</td><td>${statusCell}</td><td>${actionsCell}</td>`;
       tbody.appendChild(tr);
     });
     tbody.querySelectorAll('.role-select').forEach(select => {
@@ -1627,6 +1660,28 @@
           await api('/users/' + userId + '/role', { method:'PUT', body: JSON.stringify({ role: newRole }) });
           toast('Rôle mis à jour.');
         } catch(err){ toast(err.message, 'error'); loadUsersList(); }
+      });
+    });
+    tbody.querySelectorAll('.user-suspend-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const willActivate = btn.dataset.active === 'false';
+        const label = willActivate ? 'réactiver' : 'suspendre';
+        if (!(await confirmDialog(`Confirmer : ${label} ce compte ?${!willActivate ? ' Il ne pourra plus se connecter.' : ''}`, { title: willActivate ? 'Réactiver le compte' : 'Suspendre le compte', danger: !willActivate, confirmLabel: willActivate ? 'Réactiver' : 'Suspendre' }))) return;
+        try {
+          await api('/users/' + btn.dataset.userId + '/status', { method:'PATCH', body: JSON.stringify({ isActive: willActivate }) });
+          toast(willActivate ? 'Compte réactivé.' : 'Compte suspendu.');
+          loadUsersList();
+        } catch(err){ toast(err.message, 'error'); }
+      });
+    });
+    tbody.querySelectorAll('.user-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!(await confirmDialog('Supprimer définitivement ce compte ? Cette action est irréversible.', { title: 'Supprimer le compte', danger: true, confirmLabel: 'Supprimer' }))) return;
+        try {
+          await api('/users/' + btn.dataset.userId, { method:'DELETE' });
+          toast('Compte supprimé.');
+          loadUsersList();
+        } catch(err){ toast(err.message, 'error'); }
       });
     });
   }

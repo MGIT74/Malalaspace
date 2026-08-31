@@ -26,4 +26,14 @@ const updateRole = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: user });
 });
 
-module.exports = { listClients, listAllUsers, listTeam, createTeamMember, updateRole };
+const setActive = asyncHandler(async (req, res) => {
+  const user = await userService.setUserActive(req.user, req.params.id, req.body.isActive);
+  res.status(200).json({ success: true, data: user });
+});
+
+const remove = asyncHandler(async (req, res) => {
+  await userService.deleteUser(req.user, req.params.id);
+  res.status(200).json({ success: true, message: 'Utilisateur supprimé.' });
+});
+
+module.exports = { listClients, listAllUsers, listTeam, createTeamMember, updateRole, setActive, remove };

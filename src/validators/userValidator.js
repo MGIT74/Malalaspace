@@ -13,4 +13,8 @@ const createTeamMemberSchema = z.object({
   role: z.enum(['EMPLOYEE', 'ADMIN']).optional().default('EMPLOYEE'),
 });
 
-module.exports = { updateRoleSchema, createTeamMemberSchema };
+const setActiveSchema = z.object({
+  isActive: z.boolean(),
+});
+
+module.exports = { updateRoleSchema, createTeamMemberSchema, setActiveSchema };

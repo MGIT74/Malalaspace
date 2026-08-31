@@ -21,6 +21,7 @@ async function listClients(user) {
       phone: true,
       company: true,
       createdAt: true,
+      isActive: true,
       _count: { select: { projectsAsClient: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -51,6 +52,7 @@ async function listAllUsers(user) {
       company: true,
       role: true,
       createdAt: true,
+      isActive: true,
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -148,4 +150,70 @@ async function createTeamMember(admin, data) {
   return safeMember;
 }
 
-module.exports = { listClients, listAllUsers, listTeam, createTeamMember, updateUserRole, VALID_ROLES };
+/**
+ * Suspend ou réactive un compte. Réservé à l'admin, jamais sur soi-même.
+ */
+async function setUserActive(admin, targetUserId, isActive) {
+  if (admin.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  if (Number(targetUserId) === admin.id) {
+    throw ApiError.badRequest('Vous ne pouvez pas suspendre votre propre compte.');
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: Number(targetUserId) } });
+  if (!target) {
+    throw ApiError.notFound('Utilisateur introuvable.');
+  }
+
+  const user = await prisma.user.update({
+    where: { id: target.id },
+    data: { isActive },
+    select: { id: true, firstName: true, lastName: true, email: true, role: true, isActive: true },
+  });
+
+  if (!isActive) {
+    // Coupe toutes les sessions actives immédiatement
+    await prisma.refreshToken.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } });
+  }
+
+  return user;
+}
+
+/**
+ * Supprime définitivement un compte. Réservé à l'admin, jamais sur soi-même.
+ * Refuse la suppression si l'utilisateur a des projets associés (client ou employé assigné) —
+ * la suspension est alors la solution recommandée pour ne pas perdre l'historique des projets.
+ */
+async function deleteUser(admin, targetUserId) {
+  if (admin.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  if (Number(targetUserId) === admin.id) {
+    throw ApiError.badRequest('Vous ne pouvez pas supprimer votre propre compte.');
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: Number(targetUserId) } });
+  if (!target) {
+    throw ApiError.notFound('Utilisateur introuvable.');
+  }
+
+  const projectCount = await prisma.project.count({
+    where: { OR: [{ clientId: target.id }, { assignedUserId: target.id }] },
+  });
+  if (projectCount > 0) {
+    throw ApiError.conflict(
+      `Impossible de supprimer : ${projectCount} projet(s) sont liés à ce compte. Suspendez-le plutôt pour conserver l'historique.`
+    );
+  }
+
+  try {
+    await prisma.user.delete({ where: { id: target.id } });
+  } catch (err) {
+    throw ApiError.conflict(
+      "Impossible de supprimer ce compte : des données (commentaires, fichiers, notes...) y sont encore liées. Suspendez-le plutôt."
+    );
+  }
+}
+
+module.exports = { listClients, listAllUsers, listTeam, createTeamMember, updateUserRole, setUserActive, deleteUser, VALID_ROLES };

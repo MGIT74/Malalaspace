@@ -114,6 +114,10 @@ async function login({ email, password }) {
     throw ApiError.unauthorized('Email ou mot de passe incorrect.');
   }
 
+  if (!user.isActive) {
+    throw ApiError.forbidden('Ce compte a été suspendu. Contactez votre administrateur.');
+  }
+
   const tokens = await tokenService.issueTokenPair(user);
 
   return { user: sanitizeUser(user), tokens };
