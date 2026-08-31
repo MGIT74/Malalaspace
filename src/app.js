@@ -11,9 +11,14 @@ const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false })); // CSP désactivée pour l'instant : la page utilise des polices Google Fonts inline
 app.use(
-  cors({
-    origin: env.frontendUrl,
-    credentials: true,
+  cors((req, callback) => {
+    // Le formulaire de contact / chatbot du site vitrine (autre domaine) doit pouvoir
+    // soumettre un lead sans être bloqué par le CORS — le reste de l'API reste restreint.
+    const isPublicLeadSubmission = req.path === '/api/leads' && req.method === 'POST';
+    callback(null, {
+      origin: isPublicLeadSubmission ? true : env.frontendUrl,
+      credentials: true,
+    });
   })
 );
 app.use(morgan(env.nodeEnv === 'development' ? 'dev' : 'combined'));

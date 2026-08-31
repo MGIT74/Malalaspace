@@ -323,6 +323,38 @@ model InternalNote {
 
 /// Configuration clé/valeur modifiable par l'admin (SMTP, futurs paramètres...).
 /// Les valeurs sensibles (mots de passe) ne sont jamais renvoyées telles quelles par l'API.
+enum LeadSource {
+  CONTACT_FORM
+  CHATBOT
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  REJECTED
+}
+
+/// Prospects captés depuis le formulaire de contact du site ou l'agent IA chatbot,
+/// avant qu'ils ne deviennent des comptes clients.
+model Lead {
+  id        Int        @id @default(autoincrement())
+  firstName String?    @map("first_name")
+  lastName  String?    @map("last_name")
+  email     String?
+  phone     String?
+  company   String?
+  message   String?    @db.Text
+  source    LeadSource @default(CONTACT_FORM)
+  status    LeadStatus @default(NEW)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("leads")
+}
+
 model Setting {
   id        String   @id // ex: "smtp_host", "smtp_password"
   value     String   @db.Text
