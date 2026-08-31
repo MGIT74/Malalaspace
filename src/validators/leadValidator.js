@@ -1,12 +1,12 @@
 const { z } = require('zod');
 
 const createLeadSchema = z.object({
-  firstName: z.string().max(100).optional(),
-  lastName: z.string().max(100).optional(),
-  email: z.string().email('Email invalide').optional().or(z.literal('')),
-  phone: z.string().max(30).optional(),
-  company: z.string().max(150).optional(),
-  message: z.string().max(3000).optional(),
+  firstName: z.string().min(1, 'Prénom requis').max(100),
+  lastName: z.string().min(1, 'Nom requis').max(100),
+  email: z.string().email('Email invalide'),
+  phone: z.string().min(1, 'Téléphone requis').max(30),
+  company: z.string().min(1, 'Entreprise requise').max(150),
+  message: z.string().min(1, 'Message requis').max(3000),
   source: z.enum(['CONTACT_FORM', 'CHATBOT', 'OTHER']).optional(),
 });
 
