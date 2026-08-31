@@ -632,6 +632,10 @@
 
         <div class="scrubber" id="detail-scrubber"></div>
         <div class="scrub-label"><span id="detail-progress-label"></span><span id="detail-next-step"></span></div>
+        <div id="detail-deadline-display" class="hidden" style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:10px;">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+          <span id="detail-deadline-text"></span>
+        </div>
 
         <div class="tabs">
           <div class="tab active" data-tab="brief">Brief</div>
@@ -1722,12 +1726,19 @@
     card.className = 'card';
     const doneCount = (p.steps||[]).filter(s=>s.status==='DONE').length;
     const currentStep = (p.steps||[]).find(s=>s.status==='IN_PROGRESS');
+    let deadlineHtml = '';
+    if (p.deadline) {
+      const d = new Date(p.deadline);
+      const overdue = d < new Date() && p.status !== 'DELIVERED';
+      deadlineHtml = `<div style="font-size:12px;margin-top:8px;color:${overdue ? 'var(--danger)' : 'var(--text-muted)'};display:flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>Livraison : ${d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'})}${overdue ? ' (en retard)' : ''}</div>`;
+    }
     card.innerHTML = `
       <h3>${escapeHtml(p.name)}</h3>
       <div class="company">${escapeHtml(p.companyName || '—')}</div>
       <span class="badge badge-${p.status}">${PROJECT_STATUS_LABELS[p.status] || p.status}</span>
       <div class="scrubber"></div>
       <div class="scrub-label"><span>${doneCount}/${(p.steps||[]).length || 13} étapes</span><span>${currentStep ? escapeHtml(currentStep.name) : ''}</span></div>
+      ${deadlineHtml}
     `;
     renderScrubber(p.steps || [], card.querySelector('.scrubber'));
     card.addEventListener('click', () => showDetail(p.id));
@@ -1885,6 +1896,17 @@
       const currentStep = (p.steps||[]).find(s=>s.status==='IN_PROGRESS');
       document.getElementById('detail-progress-label').textContent = `${doneCount}/${(p.steps||[]).length} étapes complétées`;
       document.getElementById('detail-next-step').textContent = currentStep ? '→ ' + currentStep.name : '';
+
+      const deadlineDisplay = document.getElementById('detail-deadline-display');
+      if (p.deadline) {
+        const d = new Date(p.deadline);
+        const overdue = d < new Date() && p.status !== 'DELIVERED';
+        document.getElementById('detail-deadline-text').textContent = `Livraison estimée : ${d.toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'})}${overdue ? ' (en retard)' : ''}`;
+        deadlineDisplay.style.color = overdue ? 'var(--danger)' : 'var(--text-muted)';
+        deadlineDisplay.classList.remove('hidden');
+      } else {
+        deadlineDisplay.classList.add('hidden');
+      }
 
       // Visibilité équipe : notes internes + attribution employé
       const isTeam = state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE';
