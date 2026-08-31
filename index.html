@@ -589,6 +589,26 @@
           <div class="tab" data-settings-tab="smtp">Email SMTP</div>
           <div class="tab" data-settings-tab="users">Utilisateurs</div>
           <div class="tab" data-settings-tab="offers">Prestations</div>
+          <div class="tab" data-settings-tab="contact-form">Formulaire de contact</div>
+        </div>
+
+        <div id="settings-tab-contact-form" class="hidden">
+          <p class="save-hint" style="margin-bottom:16px;">Ce formulaire de contact est hébergé sur ton domaine. Colle le code ci-dessous dans n'importe quel site (vitrine, landing page...) pour l'intégrer en iframe — les messages arrivent automatiquement dans le menu <strong>Leads</strong>.</p>
+
+          <label>Lien direct</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="contact-form-url" readonly style="flex:1;" />
+            <button class="btn" id="copy-contact-url-btn">Copier</button>
+          </div>
+
+          <label>Code d'intégration (iframe)</label>
+          <textarea id="contact-form-embed" readonly rows="3" style="font-family:'IBM Plex Mono',monospace;font-size:12px;"></textarea>
+          <div class="save-row"><button class="btn btn-primary" id="copy-contact-embed-btn">Copier le code</button></div>
+
+          <label style="margin-top:28px;">Aperçu</label>
+          <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#000;">
+            <iframe id="contact-form-preview" style="width:100%;height:560px;border:0;"></iframe>
+          </div>
         </div>
 
         <div id="settings-tab-offers" class="hidden">
@@ -1447,6 +1467,21 @@
     } catch(err){ toast(err.message, 'error'); }
   });
 
+  // ---------- Formulaire de contact (iframe embed) ----------
+  function loadContactFormTab(){
+    const url = window.location.origin + '/contact-form';
+    const embedCode = `<iframe src="${url}" width="100%" height="600" style="border:none;max-width:480px;"></iframe>`;
+    document.getElementById('contact-form-url').value = url;
+    document.getElementById('contact-form-embed').value = embedCode;
+    document.getElementById('contact-form-preview').src = url;
+  }
+
+  function copyToClipboard(text){
+    navigator.clipboard.writeText(text).then(() => toast('Copié dans le presse-papier.')).catch(() => toast('Impossible de copier.', 'error'));
+  }
+  document.getElementById('copy-contact-url-btn').addEventListener('click', () => copyToClipboard(document.getElementById('contact-form-url').value));
+  document.getElementById('copy-contact-embed-btn').addEventListener('click', () => copyToClipboard(document.getElementById('contact-form-embed').value));
+
   async function loadOffersEditor(){
     const container = document.getElementById('offers-editor');
     container.innerHTML = '<div class="save-hint">Chargement...</div>';
@@ -1482,11 +1517,12 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-settings .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['integrations','smtp','users','offers'].forEach(name => {
+      ['integrations','smtp','users','offers','contact-form'].forEach(name => {
         document.getElementById('settings-tab-' + name).classList.toggle('hidden', name !== tab.dataset.settingsTab);
       });
       if (tab.dataset.settingsTab === 'users') loadUsersList();
       if (tab.dataset.settingsTab === 'offers') loadOffersEditor();
+      if (tab.dataset.settingsTab === 'contact-form') loadContactFormTab();
     });
   });
 
