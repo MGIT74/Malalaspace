@@ -3,6 +3,7 @@ const storageConfig = require('../config/storage');
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from'];
 const CONTACT_REDIRECT_KEY = 'contact_form_redirect_url';
+const CHATBOT_WEBHOOK_KEY = 'n8n_chatbot_webhook_url';
 
 /**
  * État des intégrations en lecture seule : dérivé des variables d'environnement,
@@ -74,3 +75,20 @@ async function updateContactFormRedirect(redirectUrl) {
   });
   return redirectUrl || '';
 }
+
+async function getChatbotWebhookUrl() {
+  const row = await prisma.setting.findUnique({ where: { id: CHATBOT_WEBHOOK_KEY } });
+  return row?.value || '';
+}
+
+async function updateChatbotWebhookUrl(url) {
+  await prisma.setting.upsert({
+    where: { id: CHATBOT_WEBHOOK_KEY },
+    update: { value: url || '' },
+    create: { id: CHATBOT_WEBHOOK_KEY, value: url || '' },
+  });
+  return url || '';
+}
+
+module.exports.getChatbotWebhookUrl = getChatbotWebhookUrl;
+module.exports.updateChatbotWebhookUrl = updateChatbotWebhookUrl;

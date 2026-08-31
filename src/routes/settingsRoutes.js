@@ -3,7 +3,7 @@ const settingsController = require('../controllers/settingsController');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
-const { smtpSchema, contactFormRedirectSchema } = require('../validators/settingsValidator');
+const { smtpSchema, contactFormRedirectSchema, chatbotWebhookSchema } = require('../validators/settingsValidator');
 
 const router = express.Router();
 
@@ -16,5 +16,7 @@ router.get('/integrations', settingsController.getIntegrations);
 router.get('/smtp', settingsController.getSmtp);
 router.put('/smtp', validate(smtpSchema), settingsController.updateSmtp);
 router.put('/contact-form-redirect', validate(contactFormRedirectSchema), settingsController.updateContactFormRedirect);
+router.get('/chatbot-webhook', settingsController.getChatbotWebhook);
+router.put('/chatbot-webhook', validate(chatbotWebhookSchema), settingsController.updateChatbotWebhook);
 
 module.exports = router;

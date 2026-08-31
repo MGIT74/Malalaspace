@@ -12,4 +12,8 @@ const contactFormRedirectSchema = z.object({
   redirectUrl: z.union([z.string().url(), z.literal('')]).optional(),
 });
 
-module.exports = { smtpSchema, contactFormRedirectSchema };
+const chatbotWebhookSchema = z.object({
+  webhookUrl: z.union([z.string().url(), z.literal('')]).optional(),
+});
+
+module.exports = { smtpSchema, contactFormRedirectSchema, chatbotWebhookSchema };

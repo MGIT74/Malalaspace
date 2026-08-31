@@ -25,4 +25,14 @@ const updateContactFormRedirect = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { redirectUrl } });
 });
 
-module.exports = { getIntegrations, getSmtp, updateSmtp, getContactFormRedirect, updateContactFormRedirect };
+const getChatbotWebhook = asyncHandler(async (req, res) => {
+  const webhookUrl = await settingsService.getChatbotWebhookUrl();
+  res.status(200).json({ success: true, data: { webhookUrl } });
+});
+
+const updateChatbotWebhook = asyncHandler(async (req, res) => {
+  const webhookUrl = await settingsService.updateChatbotWebhookUrl(req.body.webhookUrl);
+  res.status(200).json({ success: true, data: { webhookUrl } });
+});
+
+module.exports = { getIntegrations, getSmtp, updateSmtp, getContactFormRedirect, updateContactFormRedirect, getChatbotWebhook, updateChatbotWebhook };
