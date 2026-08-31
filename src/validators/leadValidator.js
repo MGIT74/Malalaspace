@@ -14,4 +14,8 @@ const updateLeadStatusSchema = z.object({
   status: z.enum(['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'REJECTED']),
 });
 
-module.exports = { createLeadSchema, updateLeadStatusSchema };
+const replyLeadSchema = z.object({
+  message: z.string().min(1, 'Message vide').max(5000),
+});
+
+module.exports = { createLeadSchema, updateLeadStatusSchema, replyLeadSchema };

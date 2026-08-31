@@ -21,4 +21,14 @@ const remove = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Lead supprimé.' });
 });
 
-module.exports = { create, list, updateStatus, remove };
+const reply = asyncHandler(async (req, res) => {
+  const replyRecord = await leadService.replyToLead(req.user, req.params.id, req.body.message);
+  res.status(201).json({ success: true, data: replyRecord });
+});
+
+const listReplies = asyncHandler(async (req, res) => {
+  const replies = await leadService.listReplies(req.user, req.params.id);
+  res.status(200).json({ success: true, data: replies });
+});
+
+module.exports = { create, list, updateStatus, remove, reply, listReplies };

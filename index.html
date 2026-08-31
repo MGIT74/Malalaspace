@@ -806,6 +806,23 @@
   </div>
 </div>
 
+<!-- Lead reply modal -->
+<div class="overlay hidden" id="lead-reply-overlay">
+  <div class="modal" style="max-width:520px;">
+    <h2 id="lead-reply-title" style="font-size:17px;">Répondre</h2>
+    <div style="background:var(--surface-alt);border-radius:8px;padding:12px 14px;margin:14px 0;font-size:13px;color:var(--text-muted);white-space:pre-wrap;" id="lead-reply-original"></div>
+    <label style="margin-top:0;">Historique</label>
+    <div id="lead-reply-history" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;"></div>
+    <label>Votre réponse</label>
+    <textarea id="lead-reply-message" rows="5" placeholder="Écrivez votre réponse..."></textarea>
+    <p class="save-hint" id="lead-reply-email-info" style="margin-top:8px;"></p>
+    <div class="save-row">
+      <button class="btn btn-ghost" id="lead-reply-cancel">Annuler</button>
+      <button class="btn btn-primary" id="lead-reply-send-btn">Envoyer la réponse</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm modal (remplace le confirm() natif du navigateur) -->
 <div class="overlay hidden" id="confirm-overlay">
   <div class="modal" style="max-width:420px;">
@@ -1343,7 +1360,7 @@
         <td>${LEAD_SOURCE_LABELS[lead.source] || lead.source}</td>
         <td><span class="comment-status ${lead.status}" data-lead-id="${lead.id}" style="cursor:pointer;">${LEAD_STATUS_LABELS[lead.status]}</span></td>
         <td>${new Date(lead.createdAt).toLocaleDateString('fr-FR')}</td>
-        <td class="file-actions"><button data-delete-lead="${lead.id}">Supprimer</button></td>
+        <td class="file-actions"><button data-reply-lead="${lead.id}">Répondre</button><button data-delete-lead="${lead.id}">Supprimer</button></td>
       `;
       tbody.appendChild(tr);
     });
@@ -1368,12 +1385,64 @@
         } catch(err){ toast(err.message, 'error'); }
       });
     });
+
+    tbody.querySelectorAll('[data-reply-lead]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lead = leads.find(l => l.id === Number(btn.dataset.replyLead));
+        openLeadReplyModal(lead);
+      });
+    });
   }
 
   document.getElementById('leads-search').addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     const filtered = (state.allLeads||[]).filter(l => [l.firstName,l.lastName,l.email,l.company,l.message].filter(Boolean).join(' ').toLowerCase().includes(term));
     renderLeadsTable(filtered);
+  });
+
+  async function openLeadReplyModal(lead){
+    const overlay = document.getElementById('lead-reply-overlay');
+    const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Ce lead';
+    document.getElementById('lead-reply-title').textContent = 'Répondre à ' + fullName;
+    document.getElementById('lead-reply-original').textContent = lead.message || '(aucun message)';
+    document.getElementById('lead-reply-email-info').textContent = lead.email ? `Réponse envoyée à : ${lead.email}` : "⚠️ Ce lead n'a pas fourni d'email — impossible de répondre.";
+    document.getElementById('lead-reply-message').value = '';
+    document.getElementById('lead-reply-send-btn').dataset.leadId = lead.id;
+    document.getElementById('lead-reply-send-btn').disabled = !lead.email;
+
+    const historyEl = document.getElementById('lead-reply-history');
+    historyEl.innerHTML = '<div class="save-hint">Chargement de l\'historique...</div>';
+    overlay.classList.remove('hidden');
+    try {
+      const replies = await api('/leads/' + lead.id + '/replies');
+      historyEl.innerHTML = '';
+      if (!replies.length) {
+        historyEl.innerHTML = '<div class="save-hint">Aucune réponse envoyée pour l\'instant.</div>';
+      } else {
+        replies.forEach(r => {
+          const el = document.createElement('div');
+          el.className = 'comment-item';
+          el.innerHTML = `<div class="comment-head"><span>${new Date(r.createdAt).toLocaleString('fr-FR')}</span></div><div style="white-space:pre-wrap;">${escapeHtml(r.message)}</div>`;
+          historyEl.appendChild(el);
+        });
+      }
+    } catch(err){ historyEl.innerHTML = '<div class="save-hint">Impossible de charger l\'historique.</div>'; }
+  }
+
+  document.getElementById('lead-reply-cancel').addEventListener('click', () => document.getElementById('lead-reply-overlay').classList.add('hidden'));
+  document.getElementById('lead-reply-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden'); });
+
+  document.getElementById('lead-reply-send-btn').addEventListener('click', async function(){
+    const leadId = this.dataset.leadId;
+    const message = document.getElementById('lead-reply-message').value.trim();
+    if (!message) { toast('Écris un message avant d\'envoyer.', 'error'); return; }
+    this.disabled = true;
+    try {
+      await api('/leads/' + leadId + '/reply', { method:'POST', body: JSON.stringify({ message }) });
+      toast('Réponse envoyée.');
+      document.getElementById('lead-reply-overlay').classList.add('hidden');
+      showLeads();
+    } catch(err){ toast(err.message, 'error'); this.disabled = false; }
   });
 
   async function showInvoices(){

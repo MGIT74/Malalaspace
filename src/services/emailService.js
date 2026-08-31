@@ -59,6 +59,7 @@ const templates = {
   videoReady: (projectName, versionTitle) => wrapTemplate('Nouvelle vidéo disponible', `<p>Une nouvelle version de votre projet <strong>${projectName}</strong> est disponible : ${versionTitle}.</p><p>Connectez-vous à votre espace client pour la visionner.</p>`),
   briefValidated: (projectName) => wrapTemplate('Brief client validé', `<p>Le client a validé le brief du projet <strong>${projectName}</strong>.</p>`),
   validation: (projectName, versionTitle) => wrapTemplate('Version validée par le client', `<p>Le client a validé la version "${versionTitle}" du projet <strong>${projectName}</strong>.</p>`),
+  leadReply: (firstName, message) => wrapTemplate('Réponse à votre message', `<p>Bonjour ${firstName || ''},</p><div style="white-space:pre-wrap;">${message}</div>`),
 };
 
 module.exports = { sendEmail, templates };

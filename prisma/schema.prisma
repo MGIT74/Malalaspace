@@ -355,6 +355,18 @@ model Lead {
   @@map("leads")
 }
 
+/// Historique des réponses envoyées par email à un lead depuis l'app.
+model LeadReply {
+  id        Int      @id @default(autoincrement())
+  leadId    Int      @map("lead_id")
+  userId    Int      @map("user_id")
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_replies")
+}
+
 model Setting {
   id        String   @id // ex: "smtp_host", "smtp_password"
   value     String   @db.Text
