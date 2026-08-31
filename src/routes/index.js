@@ -7,6 +7,7 @@ const notificationRoutes = require('./notificationRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const offerRoutes = require('./offerRoutes');
 const leadRoutes = require('./leadRoutes');
+const apiKeyRoutes = require('./apiKeyRoutes');
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/offers', offerRoutes);
 router.use('/leads', leadRoutes);
+router.use('/api-key', apiKeyRoutes);
 
 // Phase 2+: router.use('/files', fileRoutes); router.use('/videos', ...); etc.
 

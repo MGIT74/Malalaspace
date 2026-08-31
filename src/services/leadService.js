@@ -39,14 +39,14 @@ async function createLead(data) {
 }
 
 async function listLeads(user) {
-  if (user.role !== 'ADMIN') {
+  if (!['ADMIN', 'SERVICE'].includes(user.role)) {
     throw ApiError.forbidden();
   }
   return prisma.lead.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
 async function updateLeadStatus(user, leadId, status) {
-  if (user.role !== 'ADMIN') {
+  if (!['ADMIN', 'SERVICE'].includes(user.role)) {
     throw ApiError.forbidden();
   }
   const lead = await prisma.lead.findUnique({ where: { id: Number(leadId) } });
@@ -66,9 +66,10 @@ async function deleteLead(user, leadId) {
 /**
  * Envoie une réponse par email au lead et l'enregistre dans l'historique.
  * Fait automatiquement passer le lead de NEW à CONTACTED s'il n'a pas encore été traité.
+ * Accessible par un admin connecté ou par l'agent IA externe via clé API (role SERVICE).
  */
 async function replyToLead(user, leadId, message) {
-  if (user.role !== 'ADMIN') {
+  if (!['ADMIN', 'SERVICE'].includes(user.role)) {
     throw ApiError.forbidden();
   }
   const lead = await prisma.lead.findUnique({ where: { id: Number(leadId) } });
@@ -89,7 +90,7 @@ async function replyToLead(user, leadId, message) {
   }
 
   const reply = await prisma.leadReply.create({
-    data: { leadId: lead.id, userId: user.id, message },
+    data: { leadId: lead.id, userId: user.id || null, message },
   });
 
   if (lead.status === 'NEW') {
@@ -100,7 +101,7 @@ async function replyToLead(user, leadId, message) {
 }
 
 async function listReplies(user, leadId) {
-  if (user.role !== 'ADMIN') {
+  if (!['ADMIN', 'SERVICE'].includes(user.role)) {
     throw ApiError.forbidden();
   }
   return prisma.leadReply.findMany({

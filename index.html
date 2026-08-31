@@ -643,6 +643,36 @@
         <div id="settings-tab-integrations">
           <div id="integrations-list"></div>
           <p class="save-hint">Ces statuts reflètent la configuration du serveur (fichier .env). Pour les modifier, il faut mettre à jour les variables d'environnement côté serveur.</p>
+
+          <h3 style="margin-top:32px;font-size:15px;">Agent IA (n8n)</h3>
+          <p class="save-hint" style="margin-bottom:14px;">Génère une clé API pour que ton agent n8n puisse lire les leads, y répondre par email (avec ton lien Google Meet généré côté n8n) et mettre à jour leur statut — sans compte utilisateur.</p>
+
+          <div id="apikey-status" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--text-muted);"></div>
+
+          <div id="apikey-reveal" class="hidden" style="background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+            <p style="margin:0 0 8px;font-size:13px;color:var(--amber);font-weight:600;">⚠️ Copie cette clé maintenant — elle ne sera plus jamais affichée.</p>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="apikey-value" readonly style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;" />
+              <button class="btn" id="copy-apikey-btn">Copier</button>
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button class="btn btn-primary" id="generate-apikey-btn">Générer une nouvelle clé</button>
+            <button class="btn" id="revoke-apikey-btn" style="color:var(--danger);border-color:var(--danger-dim);">Révoquer</button>
+          </div>
+
+          <details style="margin-top:20px;">
+            <summary style="cursor:pointer;font-size:13px;color:var(--text-muted);">Comment l'utiliser depuis n8n</summary>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
+              <p>Dans le nœud HTTP Request de n8n, ajoute l'en-tête <code>X-API-Key</code> avec la valeur de ta clé, puis appelle :</p>
+              <ul style="padding-left:18px;">
+                <li><code>GET /api/leads</code> — liste des leads</li>
+                <li><code>POST /api/leads/:id/reply</code> — body <code>{"message": "..."}</code> pour répondre par email</li>
+                <li><code>PATCH /api/leads/:id/status</code> — body <code>{"status": "CONTACTED"}</code></li>
+              </ul>
+            </div>
+          </details>
         </div>
 
         <div id="settings-tab-smtp" class="hidden">
@@ -1624,8 +1654,45 @@
       document.getElementById('smtp-user').value = smtp.user;
       document.getElementById('smtp-from').value = smtp.from;
       document.getElementById('smtp-password-status').textContent = smtp.passwordSet ? '(déjà enregistré)' : '(non défini)';
+
+      await refreshApiKeyStatus();
     } catch(err){ toast(err.message, 'error'); }
   }
+
+  async function refreshApiKeyStatus(){
+    try {
+      const status = await api('/api-key');
+      const statusEl = document.getElementById('apikey-status');
+      if (status.exists) {
+        statusEl.innerHTML = `<span class="status-dot on"></span> Clé active — générée le ${new Date(status.createdAt).toLocaleDateString('fr-FR')}`;
+      } else {
+        statusEl.innerHTML = `<span class="status-dot off"></span> Aucune clé API générée pour l'instant`;
+      }
+    } catch(err){ /* silencieux */ }
+  }
+
+  document.getElementById('generate-apikey-btn').addEventListener('click', async () => {
+    if (!(await confirmDialog("Générer une nouvelle clé révoquera l'ancienne (si elle existe). Continuer ?", { title: 'Générer une clé API' }))) return;
+    try {
+      const result = await api('/api-key/generate', { method:'POST', body: JSON.stringify({ label: 'Agent IA (n8n)' }) });
+      document.getElementById('apikey-value').value = result.rawKey;
+      document.getElementById('apikey-reveal').classList.remove('hidden');
+      toast('Clé API générée.');
+      refreshApiKeyStatus();
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  document.getElementById('copy-apikey-btn').addEventListener('click', () => copyToClipboard(document.getElementById('apikey-value').value));
+
+  document.getElementById('revoke-apikey-btn').addEventListener('click', async () => {
+    if (!(await confirmDialog('Révoquer la clé API ? Toute intégration externe utilisant cette clé cessera de fonctionner immédiatement.', { title: 'Révoquer la clé API', danger: true, confirmLabel: 'Révoquer' }))) return;
+    try {
+      await api('/api-key', { method:'DELETE' });
+      document.getElementById('apikey-reveal').classList.add('hidden');
+      toast('Clé API révoquée.');
+      refreshApiKeyStatus();
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   document.querySelectorAll('#view-settings .tab').forEach(tab => {
     tab.addEventListener('click', () => {

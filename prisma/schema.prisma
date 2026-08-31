@@ -360,7 +360,7 @@ model Lead {
 model LeadReply {
   id        Int      @id @default(autoincrement())
   leadId    Int      @map("lead_id")
-  userId    Int      @map("user_id")
+  userId    Int?     @map("user_id") // null si envoyé via une intégration externe (clé API)
   message   String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
