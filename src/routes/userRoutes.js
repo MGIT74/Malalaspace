@@ -9,8 +9,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/clients', authorize('ADMIN', 'EMPLOYEE'), userController.listClients);
-router.get('/team', authorize('ADMIN', 'EMPLOYEE'), userController.listTeam);
+router.get('/clients', authorize('ADMIN'), userController.listClients);
+router.get('/team', authorize('ADMIN'), userController.listTeam);
 router.post('/team', authorize('ADMIN'), validate(createTeamMemberSchema), userController.createTeamMember);
 router.get('/', authorize('ADMIN'), userController.listAllUsers);
 router.put('/:id/role', authorize('ADMIN'), validate(updateRoleSchema), userController.updateRole);
