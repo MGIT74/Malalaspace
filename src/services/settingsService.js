@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const storageConfig = require('../config/storage');
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from'];
+const CONTACT_REDIRECT_KEY = 'contact_form_redirect_url';
 
 /**
  * État des intégrations en lecture seule : dérivé des variables d'environnement,
@@ -58,4 +59,18 @@ async function updateSmtpSettings(data) {
   return getSmtpSettings();
 }
 
-module.exports = { getIntegrationsStatus, getSmtpSettings, updateSmtpSettings };
+module.exports = { getIntegrationsStatus, getSmtpSettings, updateSmtpSettings, getContactFormRedirect, updateContactFormRedirect };
+
+async function getContactFormRedirect() {
+  const row = await prisma.setting.findUnique({ where: { id: CONTACT_REDIRECT_KEY } });
+  return row?.value || '';
+}
+
+async function updateContactFormRedirect(redirectUrl) {
+  await prisma.setting.upsert({
+    where: { id: CONTACT_REDIRECT_KEY },
+    update: { value: redirectUrl || '' },
+    create: { id: CONTACT_REDIRECT_KEY, value: redirectUrl || '' },
+  });
+  return redirectUrl || '';
+}

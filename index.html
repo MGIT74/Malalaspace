@@ -605,6 +605,13 @@
           <textarea id="contact-form-embed" readonly rows="3" style="font-family:'IBM Plex Mono',monospace;font-size:12px;"></textarea>
           <div class="save-row"><button class="btn btn-primary" id="copy-contact-embed-btn">Copier le code</button></div>
 
+          <label style="margin-top:28px;">Redirection après envoi</label>
+          <p class="save-hint" style="margin-bottom:8px;">Une fois le message envoyé, le visiteur est automatiquement redirigé vers cette page après 2 secondes (laisse vide pour ne pas rediriger).</p>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="contact-redirect-url" placeholder="https://tonsite.com/merci" style="flex:1;" />
+            <button class="btn btn-primary" id="save-contact-redirect-btn">Enregistrer</button>
+          </div>
+
           <label style="margin-top:28px;">Aperçu</label>
           <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#000;">
             <iframe id="contact-form-preview" style="width:100%;height:560px;border:0;"></iframe>
@@ -1564,13 +1571,24 @@
   });
 
   // ---------- Formulaire de contact (iframe embed) ----------
-  function loadContactFormTab(){
+  async function loadContactFormTab(){
     const url = window.location.origin + '/contact-form.html';
     const embedCode = `<iframe src="${url}" width="100%" height="600" style="border:none;max-width:480px;"></iframe>`;
     document.getElementById('contact-form-url').value = url;
     document.getElementById('contact-form-embed').value = embedCode;
     document.getElementById('contact-form-preview').src = url;
+    try {
+      const res = await api('/settings/contact-form-redirect');
+      document.getElementById('contact-redirect-url').value = res.redirectUrl || '';
+    } catch(err){ /* silencieux */ }
   }
+
+  document.getElementById('save-contact-redirect-btn').addEventListener('click', async () => {
+    try {
+      await api('/settings/contact-form-redirect', { method:'PUT', body: JSON.stringify({ redirectUrl: document.getElementById('contact-redirect-url').value || '' }) });
+      toast('Redirection enregistrée.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   function copyToClipboard(text){
     navigator.clipboard.writeText(text).then(() => toast('Copié dans le presse-papier.')).catch(() => toast('Impossible de copier.', 'error'));

@@ -12,11 +12,15 @@
     --text:#F5F5F7; --text-muted:#98989D; --accent:#0A84FF; --teal:#30D158; --danger:#FF453A;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:transparent;}
-  body{font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;}
-  .wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:480px;margin:0 auto;}
-  h2{margin:0 0 4px;font-size:19px;}
-  .sub{color:var(--text-muted);font-size:13px;margin:0 0 20px;}
+  html,body{margin:0;padding:0;background:var(--ink);min-height:100%;}
+  body{
+    font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  }
+  .wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:480px;width:100%;}
+  .logo{display:block;height:28px;width:auto;margin:0 auto 24px;}
+  h2{margin:0 0 4px;font-size:19px;text-align:center;}
+  .sub{color:var(--text-muted);font-size:13px;margin:0 0 22px;text-align:center;}
   label{display:block;font-size:13px;color:var(--text-muted);margin:14px 0 6px;}
   input,textarea{width:100%;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:7px;font-size:14px;font-family:inherit;}
   input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
@@ -27,30 +31,50 @@
   .msg{margin-top:14px;padding:10px 12px;border-radius:7px;font-size:13px;display:none;}
   .msg.success{display:block;background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.3);color:var(--teal);}
   .msg.error{display:block;background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.3);color:#ff8a80;}
+  .success-view{display:none;text-align:center;padding:20px 0;}
+  .success-view.show{display:block;}
+  .success-icon{width:52px;height:52px;border-radius:50%;background:rgba(48,209,88,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h2>Parlons de votre projet vidéo</h2>
-  <p class="sub">Décrivez votre besoin, nous vous répondons rapidement.</p>
-  <form id="contact-form">
-    <label>Prénom</label>
-    <input id="firstName" required />
-    <label>Nom</label>
-    <input id="lastName" />
-    <label>Email *</label>
-    <input type="email" id="email" required />
-    <label>Téléphone</label>
-    <input id="phone" />
-    <label>Entreprise</label>
-    <input id="company" />
-    <label>Votre message *</label>
-    <textarea id="message" required placeholder="Décrivez votre projet, votre SaaS, vos besoins..."></textarea>
-    <button type="submit" id="submit-btn">Envoyer</button>
-    <div class="msg" id="form-msg"></div>
-  </form>
+  <img class="logo" src="/assets/logo-white.png" alt="Malalaspace" />
+
+  <div id="form-view">
+    <h2>Parlons de votre projet vidéo</h2>
+    <p class="sub">Décrivez votre besoin, nous vous répondons rapidement.</p>
+    <form id="contact-form">
+      <label>Prénom</label>
+      <input id="firstName" required />
+      <label>Nom</label>
+      <input id="lastName" />
+      <label>Email *</label>
+      <input type="email" id="email" required />
+      <label>Téléphone</label>
+      <input id="phone" />
+      <label>Entreprise</label>
+      <input id="company" />
+      <label>Votre message *</label>
+      <textarea id="message" required placeholder="Décrivez votre projet, votre SaaS, vos besoins..."></textarea>
+      <button type="submit" id="submit-btn">Envoyer</button>
+      <div class="msg" id="form-msg"></div>
+    </form>
+  </div>
+
+  <div class="success-view" id="success-view">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h2>Message envoyé !</h2>
+    <p class="sub" id="success-sub">Nous vous répondons rapidement.</p>
+  </div>
 </div>
 <script>
+  var redirectUrl = '';
+  fetch('/api/settings/contact-form-redirect').then(function(r){ return r.json(); }).then(function(d){
+    redirectUrl = (d && d.data && d.data.redirectUrl) || '';
+  }).catch(function(){});
+
   document.getElementById('contact-form').addEventListener('submit', async function(e){
     e.preventDefault();
     var btn = document.getElementById('submit-btn');
@@ -74,13 +98,17 @@
       });
       var data = await res.json();
       if (!res.ok || data.success === false) throw new Error(data.message || 'Une erreur est survenue.');
-      msg.textContent = 'Message envoyé ! Nous vous répondons rapidement.';
-      msg.classList.add('success');
-      document.getElementById('contact-form').reset();
+
+      document.getElementById('form-view').style.display = 'none';
+      document.getElementById('success-view').classList.add('show');
+
+      if (redirectUrl) {
+        document.getElementById('success-sub').textContent = 'Redirection en cours...';
+        setTimeout(function(){ window.location.href = redirectUrl; }, 2000);
+      }
     } catch(err) {
       msg.textContent = err.message || 'Une erreur est survenue. Veuillez réessayer.';
       msg.classList.add('error');
-    } finally {
       btn.disabled = false;
       btn.textContent = 'Envoyer';
     }

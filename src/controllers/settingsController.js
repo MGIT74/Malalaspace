@@ -15,4 +15,14 @@ const updateSmtp = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: settings });
 });
 
-module.exports = { getIntegrations, getSmtp, updateSmtp };
+const getContactFormRedirect = asyncHandler(async (req, res) => {
+  const redirectUrl = await settingsService.getContactFormRedirect();
+  res.status(200).json({ success: true, data: { redirectUrl } });
+});
+
+const updateContactFormRedirect = asyncHandler(async (req, res) => {
+  const redirectUrl = await settingsService.updateContactFormRedirect(req.body.redirectUrl);
+  res.status(200).json({ success: true, data: { redirectUrl } });
+});
+
+module.exports = { getIntegrations, getSmtp, updateSmtp, getContactFormRedirect, updateContactFormRedirect };

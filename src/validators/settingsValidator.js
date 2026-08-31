@@ -8,4 +8,8 @@ const smtpSchema = z.object({
   from: z.union([z.string().email(), z.literal('')]).optional(),
 });
 
-module.exports = { smtpSchema };
+const contactFormRedirectSchema = z.object({
+  redirectUrl: z.union([z.string().url(), z.literal('')]).optional(),
+});
+
+module.exports = { smtpSchema, contactFormRedirectSchema };
