@@ -30,14 +30,6 @@ app.use('/api', apiRoutes);
 // Sert les assets statiques (logos, etc.) — explicite pour ne pas dépendre du comportement de nginx
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 
-// Formulaire de contact public, intégrable en iframe sur n'importe quel site tiers.
-// On retire X-Frame-Options (posé globalement par helmet) pour autoriser l'intégration cross-origin,
-// uniquement sur cette route précise — le reste de l'app garde sa protection anti-clickjacking.
-app.get('/contact-form', (req, res) => {
-  res.removeHeader('X-Frame-Options');
-  res.sendFile(path.join(__dirname, '..', 'public-contact-form.html'));
-});
-
 // Fallback : sert la page d'aperçu statique pour toute route non-API
 // (utile si nginx ne trouve pas de fichier statique et proxy vers Node)
 app.get(/^\/(?!api).*/, (req, res) => {
