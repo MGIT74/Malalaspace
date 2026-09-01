@@ -1352,6 +1352,90 @@
 
   // ---------- Factures ----------
   // ---------- Vitrine Prestations ----------
+  function getVideoPlatform(url){
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) return 'youtube';
+      if (u.hostname.includes('vimeo.com')) return 'vimeo';
+      if (u.hostname.includes('drive.google.com')) return 'drive';
+    } catch(e){ return null; }
+    return null;
+  }
+
+  // ---------- Chargement paresseux des SDK YouTube / Vimeo (pour détecter la pause) ----------
+  let youtubeApiPromise = null;
+  function ensureYouTubeApi(){
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (youtubeApiPromise) return youtubeApiPromise;
+    youtubeApiPromise = new Promise((resolve) => {
+      const previous = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (previous) previous(); resolve(); };
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    });
+    return youtubeApiPromise;
+  }
+
+  let vimeoApiPromise = null;
+  function ensureVimeoApi(){
+    if (window.Vimeo && window.Vimeo.Player) return Promise.resolve();
+    if (vimeoApiPromise) return vimeoApiPromise;
+    vimeoApiPromise = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://player.vimeo.com/api/player.js';
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+    return vimeoApiPromise;
+  }
+
+  function formatSecondsToTimecode(totalSeconds){
+    const m = Math.floor(totalSeconds / 60);
+    const s = Math.floor(totalSeconds % 60);
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  /** Remplit automatiquement le champ timecode d'un commentaire à la pause de la vidéo */
+  function autoFillTimecode(videoId, seconds){
+    const tcInput = document.querySelector(`[data-tc-for="${videoId}"]`);
+    if (!tcInput) return;
+    tcInput.value = formatSecondsToTimecode(seconds);
+    const commentInput = document.querySelector(`[data-comment-for="${videoId}"]`);
+    if (commentInput) commentInput.focus();
+  }
+
+  /** Branche la détection de pause sur un lecteur YouTube ou Vimeo pour un id de version donné */
+  function attachPauseTimecodeListener(videoId, platform, iframeId){
+    if (platform === 'youtube') {
+      ensureYouTubeApi().then(() => {
+        try {
+          new YT.Player(iframeId, {
+            events: {
+              onStateChange: (event) => {
+                if (event.data === YT.PlayerState.PAUSED) {
+                  autoFillTimecode(videoId, event.target.getCurrentTime());
+                }
+              },
+            },
+          });
+        } catch(e){ /* silencieux si l'iframe n'est plus dans le DOM */ }
+      });
+    } else if (platform === 'vimeo') {
+      ensureVimeoApi().then(() => {
+        const iframeEl = document.getElementById(iframeId);
+        if (!iframeEl) return;
+        try {
+          const player = new Vimeo.Player(iframeEl);
+          player.on('pause', () => {
+            player.getCurrentTime().then((seconds) => autoFillTimecode(videoId, seconds));
+          });
+        } catch(e){ /* silencieux */ }
+      });
+    }
+  }
+
   function toEmbedUrl(url){
     if (!url) return null;
     try {
@@ -2763,6 +2847,11 @@
         card.className = 'video-card';
         const versionComments = comments.filter(c => c.videoVersionId === v.id);
         const embedUrl = toEmbedUrl(v.videoUrl);
+        const platform = getVideoPlatform(v.videoUrl);
+        const iframeId = 'video-iframe-' + v.id;
+        const embedSrc = (platform === 'youtube' && embedUrl)
+          ? embedUrl + (embedUrl.includes('?') ? '&' : '?') + 'enablejsapi=1'
+          : embedUrl;
         const canDelete = canManageVideos();
         card.innerHTML = `
           <div class="video-card-head">
@@ -2777,7 +2866,7 @@
           <div class="video-card-columns">
             <div class="video-card-main">
               ${embedUrl
-                ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>`
+                ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><iframe id="${iframeId}" src="${embedSrc}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>${platform==='drive' ? `<p class="save-hint" style="margin-top:6px;">Timecode à indiquer manuellement (non détecté automatiquement pour Google Drive).</p>` : ''}`
                 : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
               ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
             </div>
@@ -2792,6 +2881,10 @@
           </div>
         `;
         listEl.appendChild(card);
+
+        if (embedUrl && (platform === 'youtube' || platform === 'vimeo')) {
+          attachPauseTimecodeListener(v.id, platform, iframeId);
+        }
 
         const commentListEl = card.querySelector('.comment-list');
         versionComments.forEach(c => commentListEl.appendChild(renderComment(c)));
