@@ -113,4 +113,19 @@ async function validateVersion(user, project, videoId) {
   return updated;
 }
 
-module.exports = { listVersions, createVersion, validateVersion };
+/**
+ * Supprime une version vidéo (et ses commentaires associés, en cascade).
+ * Réservé à l'admin ou à l'employé assigné.
+ */
+async function deleteVersion(user, project, videoId) {
+  if (!canManageVideos(user, project)) {
+    throw ApiError.forbidden("Seule l'équipe assignée peut supprimer une vidéo.");
+  }
+  const version = await prisma.videoVersion.findUnique({ where: { id: Number(videoId) } });
+  if (!version || version.projectId !== project.id) {
+    throw ApiError.notFound('Version introuvable.');
+  }
+  await prisma.videoVersion.delete({ where: { id: version.id } });
+}
+
+module.exports = { listVersions, createVersion, validateVersion, deleteVersion };

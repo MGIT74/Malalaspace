@@ -1349,6 +1349,12 @@
         const id = u.pathname.split('/').filter(Boolean).pop();
         return id ? `https://player.vimeo.com/video/${id}` : null;
       }
+      if (u.hostname.includes('drive.google.com')) {
+        // formats possibles : /file/d/<ID>/view, /file/d/<ID>/preview, ?id=<ID>
+        const match = u.pathname.match(/\/file\/d\/([^/]+)/);
+        const id = match ? match[1] : u.searchParams.get('id');
+        return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+      }
     } catch(e){ return null; }
     return null;
   }
@@ -2692,13 +2698,20 @@
         const card = document.createElement('div');
         card.className = 'video-card';
         const versionComments = comments.filter(c => c.videoVersionId === v.id);
+        const embedUrl = toEmbedUrl(v.videoUrl);
+        const canDelete = canManageVideos();
         card.innerHTML = `
           <div class="video-card-head">
             <h4>Version ${v.versionNumber} — ${escapeHtml(v.title)} ${v.isFinal ? '<span class="validated-tag">FINALE</span>' : ''}</h4>
-            ${v.validatedAt ? `<span class="validated-tag">${ICON_SVG.check} Validée</span>` : ''}
+            <div style="display:flex;align-items:center;gap:12px;">
+              ${v.validatedAt ? `<span class="validated-tag">${ICON_SVG.check} Validée</span>` : ''}
+              ${canDelete ? `<button class="btn-ghost delete-video-btn" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;text-decoration:underline;">Supprimer</button>` : ''}
+            </div>
           </div>
           <div class="video-meta">Ajoutée le ${new Date(v.createdAt).toLocaleDateString('fr-FR')} par ${escapeHtml(v.author.firstName)}</div>
-          <a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo</a>
+          ${embedUrl
+            ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;margin:8px 0;"><iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>`
+            : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
           ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
           <div class="comment-list" data-video-id="${v.id}"></div>
           <div class="comment-form">
@@ -2711,6 +2724,18 @@
 
         const commentListEl = card.querySelector('.comment-list');
         versionComments.forEach(c => commentListEl.appendChild(renderComment(c)));
+
+        const deleteBtn = card.querySelector('.delete-video-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async () => {
+            if (!(await confirmDialog('Supprimer définitivement cette version (et ses commentaires) ?', { title: 'Supprimer la version', danger: true, confirmLabel: 'Supprimer' }))) return;
+            try {
+              await api('/projects/' + projectId + '/videos/' + v.id, { method:'DELETE' });
+              toast('Version supprimée.');
+              loadVideos(projectId);
+            } catch(err){ toast(err.message, 'error'); }
+          });
+        }
 
         const validateBtn = card.querySelector('.validate-btn');
         if (validateBtn) {

@@ -16,4 +16,9 @@ const validate = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: version });
 });
 
-module.exports = { list, create, validate };
+const remove = asyncHandler(async (req, res) => {
+  await videoService.deleteVersion(req.user, req.project, req.params.videoId);
+  res.status(200).json({ success: true, message: 'Version supprimée.' });
+});
+
+module.exports = { list, create, validate, remove };

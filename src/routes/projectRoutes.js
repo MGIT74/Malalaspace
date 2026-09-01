@@ -46,6 +46,7 @@ router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 router.get('/:id/videos', loadProject, videoController.list);
 router.post('/:id/videos', loadProject, validate(createVideoSchema), videoController.create);
 router.post('/:id/videos/:videoId/validate', loadProject, videoController.validate);
+router.delete('/:id/videos/:videoId', loadProject, videoController.remove);
 
 router.get('/:id/comments', loadProject, commentController.list);
 router.post('/:id/comments', loadProject, validate(createCommentSchema), commentController.create);
