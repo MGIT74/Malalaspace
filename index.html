@@ -809,6 +809,7 @@
         <!-- Videos tab -->
         <div id="tab-videos" class="hidden">
           <div id="add-video-form-wrap" class="hidden" style="margin-bottom:24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+            <h4 id="video-form-title" style="margin:0 0 4px;font-size:14px;">Ajouter une vidéo</h4>
             <label>URL de la vidéo (Google Drive, Vimeo...)</label>
             <input id="video-url" placeholder="https://..." />
             <div class="field-row">
@@ -818,7 +819,13 @@
             <label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
               <input type="checkbox" id="video-isfinal" style="width:auto" /> Version finale
             </label>
-            <div class="save-row"><button class="btn btn-primary" id="add-video-btn">Ajouter la vidéo</button></div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <input type="checkbox" id="video-notify-client" checked style="width:auto" /> Notifier le client par email
+            </label>
+            <div class="save-row">
+              <button class="btn btn-ghost" id="cancel-video-form-btn">Annuler</button>
+              <button class="btn btn-primary" id="add-video-btn">Ajouter la vidéo</button>
+            </div>
           </div>
           <button class="btn" id="show-add-video-btn">+ Ajouter une vidéo</button>
 
@@ -2655,25 +2662,70 @@
   // ---------- Videos & comments ----------
   const canManageVideos = () => state.user && (state.user.role === 'ADMIN' || state.user.role === 'EMPLOYEE');
   const isClientOwner = (project) => state.user && state.user.role === 'CLIENT' && project.clientId === state.user.id;
+  let editingVideoId = null;
+
+  function resetVideoForm(){
+    editingVideoId = null;
+    document.getElementById('video-form-title').textContent = 'Ajouter une vidéo';
+    document.getElementById('add-video-btn').textContent = 'Ajouter la vidéo';
+    document.getElementById('video-url').value = '';
+    document.getElementById('video-title').value = '';
+    document.getElementById('video-description').value = '';
+    document.getElementById('video-isfinal').checked = false;
+    document.getElementById('video-notify-client').checked = true;
+  }
 
   document.getElementById('show-add-video-btn').addEventListener('click', () => {
-    document.getElementById('add-video-form-wrap').classList.toggle('hidden');
+    resetVideoForm();
+    document.getElementById('add-video-form-wrap').classList.remove('hidden');
+  });
+  document.getElementById('cancel-video-form-btn').addEventListener('click', () => {
+    document.getElementById('add-video-form-wrap').classList.add('hidden');
+    resetVideoForm();
   });
 
+  function openEditVideoForm(v){
+    editingVideoId = v.id;
+    document.getElementById('video-form-title').textContent = 'Modifier la version ' + v.versionNumber;
+    document.getElementById('add-video-btn').textContent = 'Enregistrer les modifications';
+    document.getElementById('video-url').value = v.videoUrl;
+    document.getElementById('video-title').value = v.title;
+    document.getElementById('video-description').value = v.description || '';
+    document.getElementById('video-isfinal').checked = v.isFinal;
+    document.getElementById('video-notify-client').checked = false; // par défaut on ne renotifie pas sur une simple modif
+    document.getElementById('add-video-form-wrap').classList.remove('hidden');
+    document.getElementById('add-video-form-wrap').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
   document.getElementById('add-video-btn').addEventListener('click', async () => {
+    const notifyClient = document.getElementById('video-notify-client').checked;
+
+    if (notifyClient) {
+      const ok = await confirmDialog(
+        'Le client va recevoir une notification et un email l\'invitant à se connecter pour visionner la vidéo. Confirmer l\'envoi ?',
+        { title: 'Avertir le client par email', confirmLabel: 'Oui, avertir le client' }
+      );
+      if (!ok) return;
+    }
+
+    const payload = {
+      videoUrl: document.getElementById('video-url').value,
+      title: document.getElementById('video-title').value,
+      description: document.getElementById('video-description').value || undefined,
+      isFinal: document.getElementById('video-isfinal').checked,
+      notifyClient,
+    };
+
     try {
-      await api('/projects/' + state.currentProject.id + '/videos', { method:'POST', body: JSON.stringify({
-        videoUrl: document.getElementById('video-url').value,
-        title: document.getElementById('video-title').value,
-        description: document.getElementById('video-description').value || undefined,
-        isFinal: document.getElementById('video-isfinal').checked,
-      })});
-      document.getElementById('video-url').value = '';
-      document.getElementById('video-title').value = '';
-      document.getElementById('video-description').value = '';
-      document.getElementById('video-isfinal').checked = false;
+      if (editingVideoId) {
+        await api('/projects/' + state.currentProject.id + '/videos/' + editingVideoId, { method:'PATCH', body: JSON.stringify(payload) });
+        toast('Version mise à jour.');
+      } else {
+        await api('/projects/' + state.currentProject.id + '/videos', { method:'POST', body: JSON.stringify(payload) });
+        toast('Vidéo ajoutée.');
+      }
       document.getElementById('add-video-form-wrap').classList.add('hidden');
-      toast('Vidéo ajoutée.');
+      resetVideoForm();
       loadVideos(state.currentProject.id);
       loadProjectDetail(state.currentProject.id); // rafraîchit statut/scrubber
     } catch(err){ toast(err.message, 'error'); }
@@ -2705,6 +2757,7 @@
             <h4>Version ${v.versionNumber} — ${escapeHtml(v.title)} ${v.isFinal ? '<span class="validated-tag">FINALE</span>' : ''}</h4>
             <div style="display:flex;align-items:center;gap:12px;">
               ${v.validatedAt ? `<span class="validated-tag">${ICON_SVG.check} Validée</span>` : ''}
+              ${canDelete && !v.validatedAt ? `<button class="btn-ghost edit-video-btn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:underline;">Modifier</button>` : ''}
               ${canDelete ? `<button class="btn-ghost delete-video-btn" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;text-decoration:underline;">Supprimer</button>` : ''}
             </div>
           </div>
@@ -2724,6 +2777,11 @@
 
         const commentListEl = card.querySelector('.comment-list');
         versionComments.forEach(c => commentListEl.appendChild(renderComment(c)));
+
+        const editBtn = card.querySelector('.edit-video-btn');
+        if (editBtn) {
+          editBtn.addEventListener('click', () => openEditVideoForm(v));
+        }
 
         const deleteBtn = card.querySelector('.delete-video-btn');
         if (deleteBtn) {

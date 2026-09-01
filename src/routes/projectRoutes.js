@@ -13,7 +13,7 @@ const loadProject = require('../middleware/loadProject');
 const upload = require('../middleware/upload');
 const { createProjectSchema } = require('../validators/projectValidator');
 const { upsertBriefSchema } = require('../validators/briefValidator');
-const { createVideoSchema } = require('../validators/videoValidator');
+const { createVideoSchema, updateVideoSchema } = require('../validators/videoValidator');
 const { createCommentSchema, updateCommentStatusSchema } = require('../validators/commentValidator');
 const { updateStepSchema } = require('../validators/stepValidator');
 const { createNoteSchema } = require('../validators/noteValidator');
@@ -45,6 +45,7 @@ router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 
 router.get('/:id/videos', loadProject, videoController.list);
 router.post('/:id/videos', loadProject, validate(createVideoSchema), videoController.create);
+router.patch('/:id/videos/:videoId', loadProject, validate(updateVideoSchema), videoController.update);
 router.post('/:id/videos/:videoId/validate', loadProject, videoController.validate);
 router.delete('/:id/videos/:videoId', loadProject, videoController.remove);
 
