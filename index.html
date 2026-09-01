@@ -2516,6 +2516,15 @@
       document.getElementById('brief-save-hint').textContent = b.isDraft === false ? '✓ Brief validé' : (b.updatedAt ? 'Brouillon enregistré' : '');
       state.briefWasValidated = b.isDraft === false;
 
+      // Le client ne peut plus modifier le brief une fois validé — seule l'équipe le peut encore
+      const clientBriefLocked = state.user.role === 'CLIENT' && b.isDraft === false;
+      BRIEF_FIELD_IDS.forEach(id => { document.getElementById(id).disabled = clientBriefLocked; });
+      document.getElementById('save-draft-btn').classList.toggle('hidden', clientBriefLocked);
+      document.getElementById('submit-brief-btn').classList.toggle('hidden', clientBriefLocked);
+      if (clientBriefLocked) {
+        document.getElementById('brief-save-hint').textContent = '✓ Brief validé — contactez votre équipe pour toute modification.';
+      }
+
       // steps tab
       const stepsList = document.getElementById('steps-list');
       stepsList.innerHTML = '';
