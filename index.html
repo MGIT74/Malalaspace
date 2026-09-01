@@ -249,6 +249,18 @@
   .comment-form input[type=text]{flex:1;}
   .comment-form input.timecode-input{width:90px;flex:none;}
 
+  .video-card-columns{display:flex;gap:20px;align-items:flex-start;}
+  .video-card-main{flex:1;min-width:0;}
+  .video-card-comments{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface-alt);border-radius:8px;padding:14px;max-height:480px;}
+  .video-card-comments .comment-list{margin-top:0;border-top:none;padding-top:0;flex:1;overflow-y:auto;}
+  .video-card-comments .comment-form{flex-direction:column;margin-top:10px;}
+  .video-card-comments .comment-form .timecode-input{width:100%;margin-bottom:6px;}
+  .video-card-comments .comment-form input[type=text]:not(.timecode-input){margin-bottom:8px;}
+  @media (max-width: 900px){
+    .video-card-columns{flex-direction:column;}
+    .video-card-comments{width:100%;max-height:none;}
+  }
+
   .table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
   /* ============ RESPONSIVE (mobile) ============ */
@@ -2762,15 +2774,21 @@
             </div>
           </div>
           <div class="video-meta">Ajoutée le ${new Date(v.createdAt).toLocaleDateString('fr-FR')} par ${escapeHtml(v.author.firstName)}</div>
-          ${embedUrl
-            ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;margin:8px 0;"><iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>`
-            : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
-          ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
-          <div class="comment-list" data-video-id="${v.id}"></div>
-          <div class="comment-form">
-            <input type="text" class="timecode-input mono" placeholder="00:18" data-tc-for="${v.id}" />
-            <input type="text" placeholder="Ajouter un commentaire..." data-comment-for="${v.id}" />
-            <button class="btn" data-send-for="${v.id}">Envoyer</button>
+          <div class="video-card-columns">
+            <div class="video-card-main">
+              ${embedUrl
+                ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><iframe src="${embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>`
+                : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
+              ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
+            </div>
+            <div class="video-card-comments">
+              <div class="comment-list" data-video-id="${v.id}"></div>
+              <div class="comment-form">
+                <input type="text" class="timecode-input mono" placeholder="00:18" data-tc-for="${v.id}" />
+                <input type="text" placeholder="Ajouter un commentaire..." data-comment-for="${v.id}" />
+                <button class="btn" data-send-for="${v.id}">Envoyer</button>
+              </div>
+            </div>
           </div>
         `;
         listEl.appendChild(card);
