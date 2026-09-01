@@ -1359,8 +1359,47 @@
       if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) return 'youtube';
       if (u.hostname.includes('vimeo.com')) return 'vimeo';
       if (u.hostname.includes('drive.google.com')) return 'drive';
+      if (u.hostname.includes('wistia.com') || u.hostname.includes('wistia.net') || u.hostname.includes('wi.st')) return 'wistia';
     } catch(e){ return null; }
     return null;
+  }
+
+  function getWistiaHashedId(url){
+    try {
+      const u = new URL(url);
+      const segments = u.pathname.split('/').filter(Boolean);
+      return segments.pop() || null;
+    } catch(e){ return null; }
+  }
+
+  // ---------- Wistia : chargement des scripts (API différente d'un simple iframe) ----------
+  let wistiaCoreLoaded = false;
+  function ensureWistiaCoreApi(){
+    if (wistiaCoreLoaded) return;
+    wistiaCoreLoaded = true;
+    const s = document.createElement('script');
+    s.src = 'https://fast.wistia.com/assets/external/E-v1.js';
+    s.async = true;
+    document.head.appendChild(s);
+  }
+  function loadWistiaMediaScript(hashedId){
+    if (document.querySelector(`script[data-wistia-media="${hashedId}"]`)) return;
+    const s = document.createElement('script');
+    s.src = `https://fast.wistia.com/embed/medias/${hashedId}.jsonp`;
+    s.async = true;
+    s.dataset.wistiaMedia = hashedId;
+    document.head.appendChild(s);
+  }
+  function attachWistiaPauseListener(videoId, hashedId){
+    ensureWistiaCoreApi();
+    loadWistiaMediaScript(hashedId);
+    window._wq = window._wq || [];
+    window._wq.push({
+      id: hashedId,
+      onReady: function(video){
+        video.bind('pause', function(){ autoFillTimecode(videoId, video.time()); });
+      },
+    });
   }
 
   // ---------- Chargement paresseux des SDK YouTube / Vimeo (pour détecter la pause) ----------
@@ -2849,6 +2888,7 @@
         const embedUrl = toEmbedUrl(v.videoUrl);
         const platform = getVideoPlatform(v.videoUrl);
         const iframeId = 'video-iframe-' + v.id;
+        const wistiaHashedId = platform === 'wistia' ? getWistiaHashedId(v.videoUrl) : null;
         const embedSrc = (platform === 'youtube' && embedUrl)
           ? embedUrl + (embedUrl.includes('?') ? '&' : '?') + 'enablejsapi=1'
           : embedUrl;
@@ -2865,9 +2905,11 @@
           <div class="video-meta">Ajoutée le ${new Date(v.createdAt).toLocaleDateString('fr-FR')} par ${escapeHtml(v.author.firstName)}</div>
           <div class="video-card-columns">
             <div class="video-card-main">
-              ${embedUrl
-                ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><iframe id="${iframeId}" src="${embedSrc}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>${platform==='drive' ? `<p class="save-hint" style="margin-top:6px;">Timecode à indiquer manuellement (non détecté automatiquement pour Google Drive).</p>` : ''}`
-                : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
+              ${wistiaHashedId
+                ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><div class="wistia_embed wistia_async_${wistiaHashedId}" style="position:absolute;inset:0;width:100%;height:100%;">&nbsp;</div></div>`
+                : embedUrl
+                  ? `<div class="video-player" style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden;"><iframe id="${iframeId}" src="${embedSrc}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe></div>${platform==='drive' ? `<p class="save-hint" style="margin-top:6px;">Timecode à indiquer manuellement (non détecté automatiquement pour Google Drive).</p>` : ''}`
+                  : `<a class="video-link" href="${v.videoUrl}" target="_blank" rel="noopener">${ICON_SVG.play} Regarder la vidéo (lien externe)</a>`}
               ${!v.validatedAt && isClientOwner(state.currentProject) ? `<div style="margin-top:10px"><button class="btn btn-primary validate-btn" data-video-id="${v.id}">Valider cette version</button></div>` : ''}
             </div>
             <div class="video-card-comments">
@@ -2882,7 +2924,9 @@
         `;
         listEl.appendChild(card);
 
-        if (embedUrl && (platform === 'youtube' || platform === 'vimeo')) {
+        if (wistiaHashedId) {
+          attachWistiaPauseListener(v.id, wistiaHashedId);
+        } else if (embedUrl && (platform === 'youtube' || platform === 'vimeo')) {
           attachPauseTimecodeListener(v.id, platform, iframeId);
         }
 
