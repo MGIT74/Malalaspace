@@ -11,7 +11,7 @@ const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const loadProject = require('../middleware/loadProject');
 const upload = require('../middleware/upload');
-const { createProjectSchema } = require('../validators/projectValidator');
+const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidator');
 const { upsertBriefSchema } = require('../validators/briefValidator');
 const { createVideoSchema, updateVideoSchema } = require('../validators/videoValidator');
 const { createCommentSchema, updateCommentStatusSchema } = require('../validators/commentValidator');
@@ -32,6 +32,7 @@ router.post('/admin', authorize('ADMIN'), validate(adminCreateProjectSchema), pr
 router.get('/:id', projectController.getById);
 router.patch('/:id/assign', authorize('ADMIN'), validate(assignProjectSchema), projectController.assign);
 router.patch('/:id/deadline', validate(updateDeadlineSchema), projectController.updateDeadline);
+router.patch('/:id', validate(updateProjectSchema), projectController.updateInfo);
 router.delete('/:id', authorize('ADMIN'), projectController.remove);
 
 router.get('/:id/brief', briefController.getBrief);

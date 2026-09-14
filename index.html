@@ -745,9 +745,19 @@
       <section id="view-detail" class="hidden">
         <span class="back-link" id="back-to-dashboard">← Tous les projets</span>
         <div class="detail-head">
-          <div>
-            <h1 id="detail-name" style="margin:0 0 6px;font-size:24px;"></h1>
-            <div id="detail-company" style="color:var(--text-muted);font-size:14px;"></div>
+          <div style="flex:1;min-width:0;">
+            <div id="detail-name-display" style="display:flex;align-items:center;gap:8px;">
+              <h1 id="detail-name" style="margin:0;font-size:24px;"></h1>
+              <button class="btn-ghost" id="edit-title-btn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;flex-shrink:0;" title="Modifier le titre">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+            </div>
+            <div id="detail-name-edit" class="hidden" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+              <input type="text" id="detail-name-input" style="font-size:16px;padding:8px 10px;max-width:360px;" />
+              <button class="btn btn-primary" id="save-title-btn" style="padding:8px 14px;">Enregistrer</button>
+              <button class="btn" id="cancel-title-btn" style="padding:8px 14px;">Annuler</button>
+            </div>
+            <div id="detail-company" style="color:var(--text-muted);font-size:14px;margin-top:6px;"></div>
           </div>
           <span id="detail-badge" class="badge"></span>
           <span id="detail-offer-badge" class="badge hidden" style="background:var(--surface-alt);color:var(--text-muted);"></span>
@@ -2459,6 +2469,8 @@
       const p = await api('/projects/' + id);
       state.currentProject = p;
       document.getElementById('detail-name').textContent = p.name;
+      document.getElementById('detail-name-display').classList.remove('hidden');
+      document.getElementById('detail-name-edit').classList.add('hidden');
       document.getElementById('detail-company').textContent = p.companyName || '';
       const badge = document.getElementById('detail-badge');
       badge.className = 'badge badge-' + p.status;
@@ -2567,6 +2579,36 @@
       await loadVideos(id);
     } catch(err){ toast(err.message, 'error'); showDashboard(); }
   }
+
+  // ---------- Édition du titre du projet ----------
+  document.getElementById('edit-title-btn').addEventListener('click', () => {
+    document.getElementById('detail-name-input').value = state.currentProject.name;
+    document.getElementById('detail-name-display').classList.add('hidden');
+    document.getElementById('detail-name-edit').classList.remove('hidden');
+    document.getElementById('detail-name-input').focus();
+  });
+
+  function closeTitleEdit(){
+    document.getElementById('detail-name-display').classList.remove('hidden');
+    document.getElementById('detail-name-edit').classList.add('hidden');
+  }
+  document.getElementById('cancel-title-btn').addEventListener('click', closeTitleEdit);
+
+  document.getElementById('save-title-btn').addEventListener('click', async () => {
+    const newName = document.getElementById('detail-name-input').value.trim();
+    if (!newName) { toast('Le titre ne peut pas être vide.', 'error'); return; }
+    try {
+      await api('/projects/' + state.currentProject.id, { method:'PATCH', body: JSON.stringify({ name: newName }) });
+      toast('Titre mis à jour.');
+      closeTitleEdit();
+      loadProjectDetail(state.currentProject.id);
+      loadProjects(); // rafraîchit aussi la carte dans le dashboard
+    } catch(err){ toast(err.message, 'error'); }
+  });
+  document.getElementById('detail-name-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('save-title-btn').click(); }
+    if (e.key === 'Escape') { closeTitleEdit(); }
+  });
 
   document.getElementById('delete-project-btn').addEventListener('click', async () => {
     if (!(await confirmDialog('Supprimer définitivement ce projet et toutes ses données (fichiers, vidéos, commentaires) ? Cette action est irréversible.', { title: 'Supprimer le projet', danger: true, confirmLabel: 'Supprimer définitivement' }))) return;

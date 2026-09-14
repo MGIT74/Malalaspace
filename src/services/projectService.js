@@ -202,4 +202,27 @@ async function updateDeadline(user, projectId, deadline) {
   });
 }
 
-module.exports = { listProjects, createProject, createProjectForClient, deleteProject, getProjectForUser, scopeForUser, assignProject, updateDeadline };
+/**
+ * Modifie les infos générales du projet (titre, entreprise, site web, secteur, description...).
+ * Accessible à l'admin, à l'employé assigné, ou au client propriétaire (son propre projet).
+ */
+async function updateProjectInfo(user, projectId, data) {
+  const project = await getProjectForUser(user, projectId);
+  const canEdit =
+    user.role === 'ADMIN' ||
+    (user.role === 'EMPLOYEE' && project.assignedUserId === user.id) ||
+    (user.role === 'CLIENT' && project.clientId === user.id);
+  if (!canEdit) {
+    throw ApiError.forbidden();
+  }
+
+  const allowedFields = ['name', 'companyName', 'website', 'industry', 'companyDesc', 'saasDesc', 'problemSolved', 'targetAudience'];
+  const updateData = {};
+  allowedFields.forEach((field) => {
+    if (data[field] !== undefined) updateData[field] = data[field] || null;
+  });
+
+  return prisma.project.update({ where: { id: Number(projectId) }, data: updateData });
+}
+
+module.exports = { listProjects, createProject, createProjectForClient, deleteProject, getProjectForUser, scopeForUser, assignProject, updateDeadline, updateProjectInfo };
