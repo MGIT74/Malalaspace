@@ -2,6 +2,7 @@ const express = require('express');
 const projectController = require('../controllers/projectController');
 const briefController = require('../controllers/briefController');
 const fileController = require('../controllers/fileController');
+const brandAssetController = require('../controllers/brandAssetController');
 const videoController = require('../controllers/videoController');
 const commentController = require('../controllers/commentController');
 const stepController = require('../controllers/stepController');
@@ -20,6 +21,7 @@ const { createNoteSchema } = require('../validators/noteValidator');
 const { assignProjectSchema } = require('../validators/assignValidator');
 const { addStepSchema, adminCreateProjectSchema } = require('../validators/adminValidator');
 const { updateDeadlineSchema } = require('../validators/deadlineValidator');
+const { updateColorsSchema } = require('../validators/brandAssetValidator');
 
 const router = express.Router();
 
@@ -41,6 +43,8 @@ router.put('/:id/brief', validate(upsertBriefSchema), briefController.upsertBrie
 // loadProject vérifie l'accès une seule fois puis attache req.project pour toutes ces routes
 router.post('/:id/files', loadProject, upload.single('file'), fileController.upload);
 router.get('/:id/files', loadProject, fileController.list);
+router.get('/:id/brand-asset', loadProject, brandAssetController.get);
+router.put('/:id/brand-asset', loadProject, validate(updateColorsSchema), brandAssetController.updateColors);
 router.get('/:id/files/:fileId/download', loadProject, fileController.download);
 router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 

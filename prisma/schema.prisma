@@ -178,9 +178,7 @@ model ProjectBrief {
 model BrandAsset {
   id             Int      @id @default(autoincrement())
   projectId      Int      @unique @map("project_id")
-  primaryColor   String?  @map("primary_color")
-  secondaryColor String?  @map("secondary_color")
-  accentColor    String?  @map("accent_color")
+  colors         Json?    // tableau flexible [{label, hex}, ...] : primaire, secondaire, accent, autre...
   primaryFont    String?  @map("primary_font")
   secondaryFont  String?  @map("secondary_font")
   createdAt      DateTime @default(now()) @map("created_at")

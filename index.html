@@ -134,7 +134,8 @@
   /* ---------- Project detail ---------- */
   .back-link{color:var(--text-muted);font-size:13px;cursor:pointer;margin-bottom:18px;display:inline-block;}
   .back-link:hover{color:var(--text);}
-  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:12px;flex-wrap:wrap;}
+  .detail-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:28px 0 24px;}
   .tab{padding:10px 4px;margin-right:20px;color:var(--text-muted);cursor:pointer;font-size:14px;border-bottom:2px solid transparent;}
   .tab.active{color:var(--text);border-color:var(--accent);}
@@ -252,6 +253,13 @@
   .video-card-columns{display:flex;gap:20px;align-items:flex-start;}
   .video-card-main{flex:1;min-width:0;}
   .video-card-comments{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface-alt);border-radius:8px;padding:14px;max-height:480px;}
+
+  .color-swatch-card{display:flex;align-items:center;gap:10px;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .color-swatch-card input[type=color]{width:36px;height:36px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;flex-shrink:0;}
+  .color-swatch-card .color-label-input{width:100px;padding:6px 8px;font-size:12px;}
+  .color-swatch-card .color-hex-input{width:90px;padding:6px 8px;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+  .color-swatch-card .remove-color-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;}
+  .color-swatch-card .remove-color-btn:hover{color:var(--danger);}
   .video-card-comments .comment-list{margin-top:0;border-top:none;padding-top:0;flex:1;overflow-y:auto;}
   .video-card-comments .comment-form{flex-direction:column;margin-top:10px;}
   .video-card-comments .comment-form .timecode-input{width:100%;margin-bottom:6px;}
@@ -759,9 +767,11 @@
             </div>
             <div id="detail-company" style="color:var(--text-muted);font-size:14px;margin-top:6px;"></div>
           </div>
-          <span id="detail-badge" class="badge"></span>
-          <span id="detail-offer-badge" class="badge hidden" style="background:var(--surface-alt);color:var(--text-muted);"></span>
-          <button class="btn hidden" id="delete-project-btn" style="color:var(--danger);border-color:var(--danger-dim);">Supprimer</button>
+          <div class="detail-head-actions">
+            <span id="detail-badge" class="badge"></span>
+            <span id="detail-offer-badge" class="badge hidden" style="background:var(--surface-alt);color:var(--text-muted);"></span>
+            <button class="btn hidden" id="delete-project-btn" style="color:var(--danger);border-color:var(--danger-dim);">Supprimer</button>
+          </div>
         </div>
 
         <div class="scrubber" id="detail-scrubber"></div>
@@ -856,9 +866,18 @@
 
         <!-- Assets tab -->
         <div id="tab-assets" class="hidden">
+          <h4 style="margin:0 0 4px;font-size:14px;">Couleurs de marque</h4>
+          <p class="save-hint" style="margin-bottom:12px;">Le client renseigne ses couleurs (code hex), l'équipe peut les copier directement.</p>
+          <div id="brand-colors-list" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
+          <div class="save-row" style="margin-top:0;">
+            <button class="btn" id="add-color-btn">+ Ajouter une couleur</button>
+            <button class="btn btn-primary" id="save-colors-btn">Enregistrer les couleurs</button>
+          </div>
+
+          <h4 style="margin:28px 0 12px;font-size:14px;border-top:1px solid var(--border);padding-top:20px;">Fichiers</h4>
           <div class="dropzone" id="dropzone">
             <div>Glissez-déposez un fichier ici, ou <u>cliquez pour parcourir</u></div>
-            <div style="font-size:12px;margin-top:6px;">Logos, images, vidéos, PDF, ZIP — jusqu'à 100 Mo</div>
+            <div style="font-size:12px;margin-top:6px;">JPG, PNG, PDF, EPS, SVG/AI — jusqu'à 25 Mo</div>
           </div>
           <input type="file" class="file-input" id="file-input" />
           <div class="table-scroll">
@@ -2576,6 +2595,7 @@
       });
 
       await loadFiles(id);
+      await loadBrandColors(id);
       await loadVideos(id);
     } catch(err){ toast(err.message, 'error'); showDashboard(); }
   }
@@ -2697,6 +2717,79 @@
   });
 
   // ---------- Assets ----------
+  // ---------- Couleurs de marque ----------
+  let brandColors = [];
+
+  function renderBrandColors(){
+    const container = document.getElementById('brand-colors-list');
+    container.innerHTML = '';
+    if (!brandColors.length) {
+      container.innerHTML = '<div class="save-hint">Aucune couleur définie pour l\'instant.</div>';
+      return;
+    }
+    brandColors.forEach((c, index) => {
+      const card = document.createElement('div');
+      card.className = 'color-swatch-card';
+      card.innerHTML = `
+        <input type="color" class="color-picker-input" value="${/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'}" data-index="${index}" />
+        <input type="text" class="color-label-input" placeholder="Primaire" value="${escapeHtml(c.label || '')}" data-index="${index}" data-field="label" />
+        <input type="text" class="color-hex-input mono" placeholder="#000000" value="${escapeHtml(c.hex || '')}" data-index="${index}" data-field="hex" />
+        <button type="button" class="remove-color-btn" data-index="${index}" title="Supprimer">×</button>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll('.color-picker-input').forEach(el => {
+      el.addEventListener('input', () => {
+        brandColors[el.dataset.index].hex = el.value;
+        container.querySelector(`.color-hex-input[data-index="${el.dataset.index}"]`).value = el.value;
+      });
+    });
+    container.querySelectorAll('[data-field="label"]').forEach(el => {
+      el.addEventListener('input', () => { brandColors[el.dataset.index].label = el.value; });
+    });
+    container.querySelectorAll('[data-field="hex"]').forEach(el => {
+      el.addEventListener('input', () => {
+        brandColors[el.dataset.index].hex = el.value;
+        if (/^#[0-9a-fA-F]{6}$/.test(el.value)) {
+          container.querySelector(`.color-picker-input[data-index="${el.dataset.index}"]`).value = el.value;
+        }
+      });
+    });
+    container.querySelectorAll('.remove-color-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        brandColors.splice(Number(el.dataset.index), 1);
+        renderBrandColors();
+      });
+    });
+  }
+
+  async function loadBrandColors(projectId){
+    try {
+      const brandAsset = await api('/projects/' + projectId + '/brand-asset');
+      brandColors = (brandAsset && brandAsset.colors) || [];
+      if (!brandColors.length) {
+        brandColors = [{ label: 'Primaire', hex: '' }, { label: 'Secondaire', hex: '' }];
+      }
+      renderBrandColors();
+    } catch(err){
+      brandColors = [{ label: 'Primaire', hex: '' }, { label: 'Secondaire', hex: '' }];
+      renderBrandColors();
+    }
+  }
+
+  document.getElementById('add-color-btn').addEventListener('click', () => {
+    brandColors.push({ label: 'Autre', hex: '#0A84FF' });
+    renderBrandColors();
+  });
+
+  document.getElementById('save-colors-btn').addEventListener('click', async () => {
+    try {
+      await api('/projects/' + state.currentProject.id + '/brand-asset', { method:'PUT', body: JSON.stringify({ colors: brandColors.filter(c => c.hex) }) });
+      toast('Couleurs enregistrées.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
   async function loadFiles(projectId){
     const tbody = document.getElementById('files-tbody');
     tbody.innerHTML = '';
