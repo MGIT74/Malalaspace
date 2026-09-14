@@ -44,6 +44,7 @@ async function listProjects(user) {
     include: {
       client: { select: { id: true, firstName: true, lastName: true, company: true } },
       assignedUser: { select: { id: true, firstName: true, lastName: true } },
+      steps: { orderBy: { order: 'asc' } },
     },
   });
 }
