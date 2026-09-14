@@ -1152,6 +1152,8 @@
     document.getElementById('nav-invoices').classList.toggle('hidden', !isAdmin);
     document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
     document.getElementById('nav-admin-label').classList.toggle('hidden', !isAdmin);
+    // L'employé ne doit pas voir les tarifs des offres affichés à l'étape de création de projet
+    document.getElementById('new-project-btn').classList.toggle('hidden', role === 'EMPLOYEE');
   }
 
   function showDashboard(){
