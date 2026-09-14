@@ -2730,7 +2730,8 @@
     const isEmployee = state.user.role === 'EMPLOYEE';
 
     brandColors.forEach((c, index) => {
-      const isLockedForMe = isEmployee && c.addedBy === 'CLIENT';
+      const isLockedForMe = isEmployee && (c.addedBy === 'CLIENT' || c.addedBy === 'ADMIN');
+      const lockLabel = c.addedBy === 'ADMIN' ? 'Admin' : 'Client';
       const card = document.createElement('div');
       card.className = 'color-swatch-card';
       card.innerHTML = `
@@ -2738,10 +2739,17 @@
         <input type="text" class="color-label-input" placeholder="Primaire" value="${escapeHtml(c.label || '')}" data-index="${index}" data-field="label" ${isLockedForMe ? 'disabled' : ''} />
         <input type="text" class="color-hex-input mono" placeholder="#000000" value="${escapeHtml(c.hex || '')}" data-index="${index}" data-field="hex" ${isLockedForMe ? 'disabled' : ''} />
         ${isLockedForMe
-          ? `<span title="Ajoutée par le client — non modifiable" style="color:var(--text-muted);font-size:11px;padding:0 4px;">🔒 Client</span>`
+          ? `<button type="button" class="copy-color-btn" data-hex="${escapeHtml(c.hex)}" title="Copier le code" style="display:flex;align-items:center;gap:4px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              ${lockLabel} · Copier
+            </button>`
           : `<button type="button" class="remove-color-btn" data-index="${index}" title="Supprimer">×</button>`}
       `;
       container.appendChild(card);
+    });
+
+    container.querySelectorAll('.copy-color-btn').forEach(el => {
+      el.addEventListener('click', () => copyToClipboard(el.dataset.hex));
     });
 
     container.querySelectorAll('.color-picker-input:not(:disabled)').forEach(el => {

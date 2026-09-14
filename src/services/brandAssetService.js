@@ -42,19 +42,20 @@ async function upsertColors(user, project, incomingColors) {
   let finalColors;
 
   if (user.role === 'EMPLOYEE') {
-    const existingClientColors = existingColors.filter((c) => c.addedBy === 'CLIENT');
+    // L'employé ne peut ni modifier ni supprimer les couleurs ajoutées par le client OU l'admin —
+    // il peut seulement les copier et ajouter les siennes.
+    const lockedColors = existingColors.filter((c) => c.addedBy === 'CLIENT' || c.addedBy === 'ADMIN');
 
-    // Chaque couleur client existante doit se retrouver inchangée dans l'envoi
-    for (const clientColor of existingClientColors) {
-      const match = cleanedIncoming.find((c) => c.id === clientColor.id);
-      if (!match || match.label !== clientColor.label || match.hex !== clientColor.hex) {
-        throw ApiError.forbidden("Vous ne pouvez pas modifier ou supprimer les couleurs ajoutées par le client.");
+    for (const lockedColor of lockedColors) {
+      const match = cleanedIncoming.find((c) => c.id === lockedColor.id);
+      if (!match || match.label !== lockedColor.label || match.hex !== lockedColor.hex) {
+        throw ApiError.forbidden("Vous ne pouvez pas modifier ou supprimer les couleurs ajoutées par le client ou l'admin.");
       }
     }
 
     finalColors = cleanedIncoming.map((c) => {
       const existingMatch = existingColors.find((e) => e.id === c.id);
-      if (existingMatch && existingMatch.addedBy === 'CLIENT') {
+      if (existingMatch && (existingMatch.addedBy === 'CLIENT' || existingMatch.addedBy === 'ADMIN')) {
         return existingMatch; // verrouillé : on ignore toute tentative de modification
       }
       return {
