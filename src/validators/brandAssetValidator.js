@@ -1,6 +1,7 @@
 const { z } = require('zod');
 
 const colorItemSchema = z.object({
+  id: z.string().max(60).nullable().optional(),
   label: z.string().max(50),
   hex: z.string().max(20),
 });

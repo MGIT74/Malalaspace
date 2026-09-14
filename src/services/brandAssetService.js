@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 
@@ -15,22 +16,71 @@ async function getBrandAsset(project) {
 
 /**
  * Enregistre la liste des couleurs de marque (primaire, secondaire, accent, autre...).
- * Le client peut renseigner ses couleurs, l'équipe peut les consulter/copier et les ajuster.
+ * Chaque couleur garde en mémoire qui l'a ajoutée (addedBy). Un employé peut ajouter de
+ * nouvelles couleurs librement, mais ne peut ni modifier ni supprimer celles ajoutées par
+ * le client — ces dernières restent forcées à leur valeur d'origine côté serveur, quelle
+ * que soit la donnée envoyée par le front (sécurité, pas juste une restriction visuelle).
+ * Le client et l'admin gardent un contrôle libre sur toutes les couleurs.
  */
-async function upsertColors(user, project, colors) {
+async function upsertColors(user, project, incomingColors) {
   if (!canAccess(user, project)) {
     throw ApiError.forbidden();
   }
 
-  const sanitized = (colors || [])
+  const existing = await prisma.brandAsset.findUnique({ where: { projectId: project.id } });
+  const existingColors = (existing && existing.colors) || [];
+
+  const cleanedIncoming = (incomingColors || [])
     .filter((c) => c && c.hex)
-    .slice(0, 12) // garde-fou raisonnable
-    .map((c) => ({ label: String(c.label || 'Couleur').slice(0, 50), hex: String(c.hex).slice(0, 20) }));
+    .slice(0, 12)
+    .map((c) => ({
+      id: c.id || null,
+      label: String(c.label || 'Couleur').slice(0, 50),
+      hex: String(c.hex).slice(0, 20),
+    }));
+
+  let finalColors;
+
+  if (user.role === 'EMPLOYEE') {
+    const existingClientColors = existingColors.filter((c) => c.addedBy === 'CLIENT');
+
+    // Chaque couleur client existante doit se retrouver inchangée dans l'envoi
+    for (const clientColor of existingClientColors) {
+      const match = cleanedIncoming.find((c) => c.id === clientColor.id);
+      if (!match || match.label !== clientColor.label || match.hex !== clientColor.hex) {
+        throw ApiError.forbidden("Vous ne pouvez pas modifier ou supprimer les couleurs ajoutées par le client.");
+      }
+    }
+
+    finalColors = cleanedIncoming.map((c) => {
+      const existingMatch = existingColors.find((e) => e.id === c.id);
+      if (existingMatch && existingMatch.addedBy === 'CLIENT') {
+        return existingMatch; // verrouillé : on ignore toute tentative de modification
+      }
+      return {
+        id: c.id || crypto.randomUUID(),
+        label: c.label,
+        hex: c.hex,
+        addedBy: existingMatch ? existingMatch.addedBy : 'EMPLOYEE',
+      };
+    });
+  } else {
+    // ADMIN ou CLIENT : contrôle libre sur toutes les couleurs
+    finalColors = cleanedIncoming.map((c) => {
+      const existingMatch = existingColors.find((e) => e.id === c.id);
+      return {
+        id: c.id || crypto.randomUUID(),
+        label: c.label,
+        hex: c.hex,
+        addedBy: existingMatch ? existingMatch.addedBy : user.role,
+      };
+    });
+  }
 
   return prisma.brandAsset.upsert({
     where: { projectId: project.id },
-    update: { colors: sanitized },
-    create: { projectId: project.id, colors: sanitized },
+    update: { colors: finalColors },
+    create: { projectId: project.id, colors: finalColors },
   });
 }
 

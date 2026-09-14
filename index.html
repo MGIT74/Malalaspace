@@ -2727,28 +2727,33 @@
       container.innerHTML = '<div class="save-hint">Aucune couleur définie pour l\'instant.</div>';
       return;
     }
+    const isEmployee = state.user.role === 'EMPLOYEE';
+
     brandColors.forEach((c, index) => {
+      const isLockedForMe = isEmployee && c.addedBy === 'CLIENT';
       const card = document.createElement('div');
       card.className = 'color-swatch-card';
       card.innerHTML = `
-        <input type="color" class="color-picker-input" value="${/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'}" data-index="${index}" />
-        <input type="text" class="color-label-input" placeholder="Primaire" value="${escapeHtml(c.label || '')}" data-index="${index}" data-field="label" />
-        <input type="text" class="color-hex-input mono" placeholder="#000000" value="${escapeHtml(c.hex || '')}" data-index="${index}" data-field="hex" />
-        <button type="button" class="remove-color-btn" data-index="${index}" title="Supprimer">×</button>
+        <input type="color" class="color-picker-input" value="${/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'}" data-index="${index}" ${isLockedForMe ? 'disabled' : ''} />
+        <input type="text" class="color-label-input" placeholder="Primaire" value="${escapeHtml(c.label || '')}" data-index="${index}" data-field="label" ${isLockedForMe ? 'disabled' : ''} />
+        <input type="text" class="color-hex-input mono" placeholder="#000000" value="${escapeHtml(c.hex || '')}" data-index="${index}" data-field="hex" ${isLockedForMe ? 'disabled' : ''} />
+        ${isLockedForMe
+          ? `<span title="Ajoutée par le client — non modifiable" style="color:var(--text-muted);font-size:11px;padding:0 4px;">🔒 Client</span>`
+          : `<button type="button" class="remove-color-btn" data-index="${index}" title="Supprimer">×</button>`}
       `;
       container.appendChild(card);
     });
 
-    container.querySelectorAll('.color-picker-input').forEach(el => {
+    container.querySelectorAll('.color-picker-input:not(:disabled)').forEach(el => {
       el.addEventListener('input', () => {
         brandColors[el.dataset.index].hex = el.value;
         container.querySelector(`.color-hex-input[data-index="${el.dataset.index}"]`).value = el.value;
       });
     });
-    container.querySelectorAll('[data-field="label"]').forEach(el => {
+    container.querySelectorAll('[data-field="label"]:not(:disabled)').forEach(el => {
       el.addEventListener('input', () => { brandColors[el.dataset.index].label = el.value; });
     });
-    container.querySelectorAll('[data-field="hex"]').forEach(el => {
+    container.querySelectorAll('[data-field="hex"]:not(:disabled)').forEach(el => {
       el.addEventListener('input', () => {
         brandColors[el.dataset.index].hex = el.value;
         if (/^#[0-9a-fA-F]{6}$/.test(el.value)) {
@@ -2769,23 +2774,26 @@
       const brandAsset = await api('/projects/' + projectId + '/brand-asset');
       brandColors = (brandAsset && brandAsset.colors) || [];
       if (!brandColors.length) {
-        brandColors = [{ label: 'Primaire', hex: '' }, { label: 'Secondaire', hex: '' }];
+        brandColors = [{ id: null, label: 'Primaire', hex: '' }, { id: null, label: 'Secondaire', hex: '' }];
       }
       renderBrandColors();
     } catch(err){
-      brandColors = [{ label: 'Primaire', hex: '' }, { label: 'Secondaire', hex: '' }];
+      brandColors = [{ id: null, label: 'Primaire', hex: '' }, { id: null, label: 'Secondaire', hex: '' }];
       renderBrandColors();
     }
   }
 
   document.getElementById('add-color-btn').addEventListener('click', () => {
-    brandColors.push({ label: 'Autre', hex: '#0A84FF' });
+    brandColors.push({ id: null, label: 'Autre', hex: '#0A84FF' });
     renderBrandColors();
   });
 
   document.getElementById('save-colors-btn').addEventListener('click', async () => {
     try {
-      await api('/projects/' + state.currentProject.id + '/brand-asset', { method:'PUT', body: JSON.stringify({ colors: brandColors.filter(c => c.hex) }) });
+      const payload = brandColors.filter(c => c.hex).map(c => ({ id: c.id, label: c.label, hex: c.hex }));
+      const updated = await api('/projects/' + state.currentProject.id + '/brand-asset', { method:'PUT', body: JSON.stringify({ colors: payload }) });
+      brandColors = (updated && updated.colors) || [];
+      renderBrandColors();
       toast('Couleurs enregistrées.');
     } catch(err){ toast(err.message, 'error'); }
   });
