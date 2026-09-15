@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 const notificationService = require('./notificationService');
+const logService = require('./logService');
 
 /**
  * Étapes par défaut de la timeline (Phase 2 les rendra configurables par l'admin)
@@ -123,6 +124,7 @@ async function deleteProject(user, projectId) {
   await Promise.all(files.map((f) => provider.remove(f.fileUrl).catch(() => {})));
 
   await prisma.project.delete({ where: { id: project.id } });
+  logService.log('project_deleted', `Projet supprimé : "${project.name}"`, user.id);
 }
 
 /**

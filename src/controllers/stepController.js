@@ -16,4 +16,9 @@ const remove = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Étape supprimée.' });
 });
 
-module.exports = { update, add, remove };
+const reorder = asyncHandler(async (req, res) => {
+  const steps = await stepService.reorderStep(req.user, req.project, req.params.stepId, req.body.direction);
+  res.status(200).json({ success: true, data: steps });
+});
+
+module.exports = { update, add, remove, reorder };

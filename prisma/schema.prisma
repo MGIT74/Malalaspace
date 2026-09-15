@@ -366,6 +366,18 @@ model LeadReply {
   @@map("lead_replies")
 }
 
+/// Journal d'activité consultable par l'admin (connexions, suppressions, changements de rôle, paiements...).
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  type      String
+  message   String   @db.Text
+  userId    Int?     @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
 model Setting {
   id        String   @id // ex: "smtp_host", "smtp_password"
   value     String   @db.Text

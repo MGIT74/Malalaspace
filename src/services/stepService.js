@@ -71,4 +71,33 @@ async function deleteStep(user, project, stepId) {
   await prisma.project.update({ where: { id: project.id }, data: { progress: globalProgress } });
 }
 
-module.exports = { updateStep, addStep, deleteStep };
+/**
+ * Déplace une étape d'un cran vers le haut ou le bas (échange son "order" avec l'étape voisine).
+ * Réservé à l'admin.
+ */
+async function reorderStep(user, project, stepId, direction) {
+  if (user.role !== 'ADMIN') {
+    throw ApiError.forbidden();
+  }
+  const steps = await prisma.projectStep.findMany({ where: { projectId: project.id }, orderBy: { order: 'asc' } });
+  const index = steps.findIndex((s) => s.id === Number(stepId));
+  if (index === -1) {
+    throw ApiError.notFound('Étape introuvable.');
+  }
+  const swapIndex = direction === 'up' ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= steps.length) {
+    return steps; // déjà en haut/bas, rien à faire
+  }
+
+  const current = steps[index];
+  const target = steps[swapIndex];
+
+  await prisma.$transaction([
+    prisma.projectStep.update({ where: { id: current.id }, data: { order: target.order } }),
+    prisma.projectStep.update({ where: { id: target.id }, data: { order: current.order } }),
+  ]);
+
+  return prisma.projectStep.findMany({ where: { projectId: project.id }, orderBy: { order: 'asc' } });
+}
+
+module.exports = { updateStep, addStep, deleteStep, reorderStep };

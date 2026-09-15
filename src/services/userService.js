@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const bcrypt = require('bcryptjs');
 const ApiError = require('../utils/apiError');
 const emailService = require('./emailService');
+const logService = require('./logService');
 
 const SALT_ROUNDS = 12;
 const VALID_ROLES = ['CLIENT', 'EMPLOYEE', 'ADMIN'];
@@ -77,6 +78,8 @@ async function updateUserRole(user, targetUserId, newRole) {
   if (!target) {
     throw ApiError.notFound('Utilisateur introuvable.');
   }
+
+  logService.log('role_changed', `${target.email} : rôle changé de ${target.role} à ${newRole}`, user.id);
 
   return prisma.user.update({
     where: { id: Number(targetUserId) },
@@ -183,6 +186,8 @@ async function setUserActive(admin, targetUserId, isActive) {
     await prisma.refreshToken.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
+  logService.log(isActive ? 'user_reactivated' : 'user_suspended', `${target.email} : ${isActive ? 'réactivé' : 'suspendu'}`, admin.id);
+
   return user;
 }
 
@@ -215,6 +220,7 @@ async function deleteUser(admin, targetUserId) {
 
   try {
     await prisma.user.delete({ where: { id: target.id } });
+    logService.log('user_deleted', `Compte supprimé : ${target.email}`, admin.id);
   } catch (err) {
     throw ApiError.conflict(
       "Impossible de supprimer ce compte : des données (commentaires, fichiers, notes...) y sont encore liées. Suspendez-le plutôt."

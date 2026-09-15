@@ -9,6 +9,7 @@ const offerRoutes = require('./offerRoutes');
 const leadRoutes = require('./leadRoutes');
 const apiKeyRoutes = require('./apiKeyRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
+const logRoutes = require('./logRoutes');
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ router.use('/offers', offerRoutes);
 router.use('/leads', leadRoutes);
 router.use('/api-key', apiKeyRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use('/logs', logRoutes);
 
 // Phase 2+: router.use('/files', fileRoutes); router.use('/videos', ...); etc.
 

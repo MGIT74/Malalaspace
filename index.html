@@ -789,6 +789,7 @@
           <div class="tab" data-tab="videos">Vidéos</div>
           <div class="tab" data-tab="assets">Assets</div>
           <div class="tab" data-tab="steps">Production</div>
+          <div class="tab" data-tab="payments">Paiements</div>
           <div class="tab hidden" data-tab="notes" id="notes-tab-btn">Notes internes</div>
         </div>
 
@@ -930,6 +931,48 @@
           <div id="add-step-wrap" class="hidden" style="margin-top:16px;display:flex;gap:8px;">
             <input type="text" id="new-step-name" placeholder="Nom de la nouvelle étape..." style="flex:1" />
             <button class="btn" id="add-step-btn">+ Ajouter une étape</button>
+          </div>
+        </div>
+
+        <!-- Payments tab -->
+        <div id="tab-payments" class="hidden">
+          <div id="payments-not-configured" class="empty-state hidden">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            <div class="empty-title">Paiement en ligne pas encore activé</div>
+            <div class="empty-sub">Le paiement Stripe sera bientôt disponible. Contacte ton agence pour toute question sur la facturation.</div>
+          </div>
+          <div id="payments-content">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:480px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="color:var(--text-muted);font-size:13px;" id="payments-offer-name"></span>
+                <span style="font-size:20px;font-weight:700;" id="payments-total"></span>
+              </div>
+              <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div>
+                  <div style="font-size:14px;font-weight:600;">Acompte (50%)</div>
+                  <div style="font-size:12px;color:var(--text-muted);" id="payments-deposit-date"></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:600;margin-bottom:4px;" id="payments-deposit-amount"></div>
+                  <span class="badge" id="payments-deposit-badge"></span>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="pay-deposit-btn" style="width:100%;margin-bottom:16px;">Payer l'acompte</button>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div>
+                  <div style="font-size:14px;font-weight:600;">Solde (50%)</div>
+                  <div style="font-size:12px;color:var(--text-muted);" id="payments-balance-date"></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:600;margin-bottom:4px;" id="payments-balance-amount"></div>
+                  <span class="badge" id="payments-balance-badge"></span>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="pay-balance-btn" style="width:100%;">Payer le solde</button>
+            </div>
           </div>
         </div>
 
@@ -2569,10 +2612,11 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('#view-detail .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      ['brief','videos','assets','steps','notes'].forEach(name => {
+      ['brief','videos','assets','steps','payments','notes'].forEach(name => {
         document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
       });
       if (tab.dataset.tab === 'notes') loadNotes(state.currentProject.id);
+      if (tab.dataset.tab === 'payments') loadPaymentsTab(state.currentProject.id);
     });
   });
 
@@ -3003,6 +3047,57 @@
   });
 
   // ---------- Notes internes (équipe uniquement) ----------
+  // ---------- Paiements (Stripe) ----------
+  const PAYMENT_STATUS_LABELS_TAB = { PENDING: 'En attente', SUCCEEDED: 'Payé', FAILED: 'Échoué', REFUNDED: 'Remboursé' };
+  function paymentBadgeClass(status){
+    if (status === 'SUCCEEDED') return 'badge-DELIVERED';
+    if (status === 'FAILED') return 'badge-CLIENT_WAITING';
+    return 'badge-NEW';
+  }
+  function formatMoney(amount, currency){
+    try { return amount.toLocaleString('fr-FR') + ' ' + currency; } catch(e){ return amount + ' ' + currency; }
+  }
+
+  async function loadPaymentsTab(projectId){
+    try {
+      const summary = await api('/projects/' + projectId + '/payments/summary');
+      document.getElementById('payments-not-configured').classList.toggle('hidden', summary.stripeConfigured);
+      document.getElementById('payments-content').classList.toggle('hidden', !summary.stripeConfigured);
+      if (!summary.stripeConfigured) return;
+
+      document.getElementById('payments-offer-name').textContent = summary.offerName || 'Aucune offre associée';
+      document.getElementById('payments-total').textContent = formatMoney(summary.totalPrice, summary.currency);
+
+      document.getElementById('payments-deposit-amount').textContent = formatMoney(summary.deposit.amount, summary.currency);
+      const depositBadge = document.getElementById('payments-deposit-badge');
+      depositBadge.className = 'badge ' + paymentBadgeClass(summary.deposit.status);
+      depositBadge.textContent = PAYMENT_STATUS_LABELS_TAB[summary.deposit.status];
+      document.getElementById('payments-deposit-date').textContent = summary.deposit.paidAt ? 'Payé le ' + new Date(summary.deposit.paidAt).toLocaleDateString('fr-FR') : '';
+
+      document.getElementById('payments-balance-amount').textContent = formatMoney(summary.balance.amount, summary.currency);
+      const balanceBadge = document.getElementById('payments-balance-badge');
+      balanceBadge.className = 'badge ' + paymentBadgeClass(summary.balance.status);
+      balanceBadge.textContent = PAYMENT_STATUS_LABELS_TAB[summary.balance.status];
+      document.getElementById('payments-balance-date').textContent = summary.balance.paidAt ? 'Payé le ' + new Date(summary.balance.paidAt).toLocaleDateString('fr-FR') : '';
+
+      const isOwnerClient = isClientOwner(state.currentProject);
+      const depositBtn = document.getElementById('pay-deposit-btn');
+      const balanceBtn = document.getElementById('pay-balance-btn');
+      depositBtn.classList.toggle('hidden', !isOwnerClient || summary.deposit.status === 'SUCCEEDED');
+      balanceBtn.classList.toggle('hidden', !isOwnerClient || summary.balance.status === 'SUCCEEDED' || summary.deposit.status !== 'SUCCEEDED');
+    } catch(err){ toast(err.message, 'error'); }
+  }
+
+  async function startCheckout(type, btn){
+    btn.disabled = true;
+    try {
+      const res = await api('/projects/' + state.currentProject.id + '/payments/checkout', { method:'POST', body: JSON.stringify({ type }) });
+      window.location.href = res.url;
+    } catch(err){ toast(err.message, 'error'); btn.disabled = false; }
+  }
+  document.getElementById('pay-deposit-btn').addEventListener('click', function(){ startCheckout('DEPOSIT', this); });
+  document.getElementById('pay-balance-btn').addEventListener('click', function(){ startCheckout('BALANCE', this); });
+
   async function loadNotes(projectId){
     try {
       const notes = await api('/projects/' + projectId + '/notes');

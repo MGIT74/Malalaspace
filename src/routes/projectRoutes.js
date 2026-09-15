@@ -3,6 +3,7 @@ const projectController = require('../controllers/projectController');
 const briefController = require('../controllers/briefController');
 const fileController = require('../controllers/fileController');
 const brandAssetController = require('../controllers/brandAssetController');
+const projectPaymentController = require('../controllers/projectPaymentController');
 const videoController = require('../controllers/videoController');
 const commentController = require('../controllers/commentController');
 const stepController = require('../controllers/stepController');
@@ -22,6 +23,7 @@ const { assignProjectSchema } = require('../validators/assignValidator');
 const { addStepSchema, adminCreateProjectSchema } = require('../validators/adminValidator');
 const { updateDeadlineSchema } = require('../validators/deadlineValidator');
 const { updateColorsSchema, updateFontsSchema } = require('../validators/brandAssetValidator');
+const { createCheckoutSchema } = require('../validators/projectPaymentValidator');
 
 const router = express.Router();
 
@@ -46,6 +48,8 @@ router.get('/:id/files', loadProject, fileController.list);
 router.get('/:id/brand-asset', loadProject, brandAssetController.get);
 router.put('/:id/brand-asset', loadProject, validate(updateColorsSchema), brandAssetController.updateColors);
 router.put('/:id/brand-asset/fonts', loadProject, validate(updateFontsSchema), brandAssetController.updateFonts);
+router.get('/:id/payments/summary', loadProject, projectPaymentController.getSummary);
+router.post('/:id/payments/checkout', loadProject, validate(createCheckoutSchema), projectPaymentController.createCheckout);
 router.get('/:id/files/:fileId/download', loadProject, fileController.download);
 router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 
@@ -60,6 +64,7 @@ router.post('/:id/comments', loadProject, validate(createCommentSchema), comment
 router.patch('/:id/comments/:commentId/status', loadProject, validate(updateCommentStatusSchema), commentController.updateStatus);
 
 router.patch('/:id/steps/:stepId', loadProject, validate(updateStepSchema), stepController.update);
+router.patch('/:id/steps/:stepId/reorder', loadProject, stepController.reorder);
 router.post('/:id/steps', loadProject, validate(addStepSchema), stepController.add);
 router.delete('/:id/steps/:stepId', loadProject, stepController.remove);
 

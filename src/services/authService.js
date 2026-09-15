@@ -4,6 +4,7 @@ const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 const tokenService = require('./tokenService');
 const emailService = require('./emailService');
+const logService = require('./logService');
 
 const SALT_ROUNDS = 12;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 heure
@@ -106,19 +107,23 @@ async function changePassword(userId, currentPassword, newPassword) {
 async function login({ email, password }) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
+    logService.log('login_failed', `Tentative de connexion échouée (email inconnu) : ${email}`);
     throw ApiError.unauthorized('Email ou mot de passe incorrect.');
   }
 
   const validPassword = await bcrypt.compare(password, user.passwordHash);
   if (!validPassword) {
+    logService.log('login_failed', `Tentative de connexion échouée (mot de passe incorrect) : ${email}`, user.id);
     throw ApiError.unauthorized('Email ou mot de passe incorrect.');
   }
 
   if (!user.isActive) {
+    logService.log('login_blocked', `Connexion refusée (compte suspendu) : ${email}`, user.id);
     throw ApiError.forbidden('Ce compte a été suspendu. Contactez votre administrateur.');
   }
 
   const tokens = await tokenService.issueTokenPair(user);
+  logService.log('login_success', `Connexion réussie : ${email}`, user.id);
 
   return { user: sanitizeUser(user), tokens };
 }

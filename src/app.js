@@ -5,7 +5,19 @@ const morgan = require('morgan');
 const path = require('path');
 const env = require('./config/env');
 const apiRoutes = require('./routes');
+const stripeService = require('./services/stripeService');
+const logger = require('./utils/logger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+
+async function asyncStripeWebhook(req, res) {
+  try {
+    await stripeService.handleWebhookEvent(req.body, req.headers['stripe-signature']);
+    res.json({ received: true });
+  } catch (err) {
+    logger.error('Webhook Stripe:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+}
 
 const app = express();
 
@@ -22,6 +34,11 @@ app.use(
   })
 );
 app.use(morgan(env.nodeEnv === 'development' ? 'dev' : 'combined'));
+
+// Webhook Stripe : DOIT recevoir le body brut (non parsé en JSON) pour vérifier la signature.
+// Monté avant express.json() donc jamais impacté par le parseur JSON global ci-dessous.
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), asyncStripeWebhook);
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
