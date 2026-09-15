@@ -829,8 +829,10 @@
             <div><label>Durée souhaitée</label><input id="brief-duration" placeholder="ex: 45s" /></div>
             <div><label>Format</label><input id="brief-format" placeholder="ex: 16:9" /></div>
           </div>
-          <label>Plateforme de diffusion</label>
-          <input id="brief-platform" placeholder="ex: YouTube, LinkedIn" />
+          <div class="field-row">
+            <div><label>Plateforme de diffusion</label><input id="brief-platform" placeholder="ex: YouTube, LinkedIn" /></div>
+            <div><label>Langue</label><input id="brief-language" placeholder="ex: Français" /></div>
+          </div>
           <label>Script</label>
           <textarea id="brief-script" rows="6"></textarea>
 
@@ -877,10 +879,29 @@
             <button class="btn btn-primary" id="save-colors-btn">Enregistrer les couleurs</button>
           </div>
 
+          <h4 style="margin:28px 0 12px;font-size:14px;border-top:1px solid var(--border);padding-top:20px;">Typographies</h4>
+          <div class="field-row">
+            <div><label style="margin-top:0">Police primaire</label><input id="font-primary" placeholder="ex: Inter" /></div>
+            <div><label style="margin-top:0">Police secondaire</label><input id="font-secondary" placeholder="ex: Poppins" /></div>
+          </div>
+          <div class="save-row"><button class="btn btn-primary" id="save-fonts-btn">Enregistrer les polices</button></div>
+
+          <h4 style="margin:28px 0 12px;font-size:14px;border-top:1px solid var(--border);padding-top:20px;">Logo</h4>
+          <div id="logo-current-wrap" class="hidden" style="display:flex;align-items:center;gap:14px;margin-bottom:14px;background:var(--surface-alt);border-radius:8px;padding:12px 14px;">
+            <img id="logo-current-preview" style="height:48px;width:auto;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:4px;" />
+            <div style="flex:1;font-size:13px;" id="logo-current-name"></div>
+            <a id="logo-download-link" class="video-link" target="_blank" style="font-size:12px;">Télécharger</a>
+          </div>
+          <div class="dropzone" id="logo-dropzone" style="padding:20px;">
+            <div>Glissez-déposez le logo ici, ou <u>cliquez pour parcourir</u></div>
+            <div style="font-size:12px;margin-top:6px;">PNG, JPG, SVG — remplace le logo existant</div>
+          </div>
+          <input type="file" class="file-input" id="logo-file-input" accept="image/png,image/jpeg,image/svg+xml" />
+
           <h4 style="margin:28px 0 12px;font-size:14px;border-top:1px solid var(--border);padding-top:20px;">Fichiers</h4>
           <div class="dropzone" id="dropzone">
             <div>Glissez-déposez un fichier ici, ou <u>cliquez pour parcourir</u></div>
-            <div style="font-size:12px;margin-top:6px;">JPG, PNG, PDF, EPS, SVG/AI — jusqu'à 25 Mo</div>
+            <div style="font-size:12px;margin-top:6px;">JPG, PNG, PDF, EPS, SVG/AI, ZIP — jusqu'à 25 Mo</div>
           </div>
           <input type="file" class="file-input" id="file-input" />
           <div class="table-scroll">
@@ -2617,6 +2638,7 @@
       document.getElementById('brief-duration').value = b.duration || '';
       document.getElementById('brief-format').value = b.format || '';
       document.getElementById('brief-platform').value = b.platform || '';
+      document.getElementById('brief-language').value = b.language || '';
       document.getElementById('brief-script').value = b.script || '';
       document.getElementById('brief-save-hint').textContent = b.isDraft === false ? '✓ Brief validé' : (b.updatedAt ? 'Brouillon enregistré' : '');
       state.briefWasValidated = b.isDraft === false;
@@ -2731,6 +2753,7 @@
       duration: document.getElementById('brief-duration').value || undefined,
       format: document.getElementById('brief-format').value || undefined,
       platform: document.getElementById('brief-platform').value || undefined,
+      language: document.getElementById('brief-language').value || undefined,
       script: document.getElementById('brief-script').value || undefined,
     };
   }
@@ -2762,7 +2785,7 @@
 
   // ---------- Auto-sauvegarde du brief (brouillon, débouncée) ----------
   let briefAutoSaveTimer = null;
-  const BRIEF_FIELD_IDS = ['brief-objective','brief-targetAudience','brief-mainMessage','brief-callToAction','brief-tone','brief-duration','brief-format','brief-platform','brief-script'];
+  const BRIEF_FIELD_IDS = ['brief-objective','brief-targetAudience','brief-mainMessage','brief-callToAction','brief-tone','brief-duration','brief-format','brief-platform','brief-language','brief-script'];
   BRIEF_FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => {
@@ -2857,11 +2880,23 @@
         brandColors = [{ id: null, label: 'Primaire', hex: '' }, { id: null, label: 'Secondaire', hex: '' }];
       }
       renderBrandColors();
+      document.getElementById('font-primary').value = (brandAsset && brandAsset.primaryFont) || '';
+      document.getElementById('font-secondary').value = (brandAsset && brandAsset.secondaryFont) || '';
     } catch(err){
       brandColors = [{ id: null, label: 'Primaire', hex: '' }, { id: null, label: 'Secondaire', hex: '' }];
       renderBrandColors();
     }
   }
+
+  document.getElementById('save-fonts-btn').addEventListener('click', async () => {
+    try {
+      await api('/projects/' + state.currentProject.id + '/brand-asset/fonts', { method:'PUT', body: JSON.stringify({
+        primaryFont: document.getElementById('font-primary').value || undefined,
+        secondaryFont: document.getElementById('font-secondary').value || undefined,
+      })});
+      toast('Polices enregistrées.');
+    } catch(err){ toast(err.message, 'error'); }
+  });
 
   document.getElementById('add-color-btn').addEventListener('click', () => {
     brandColors.push({ id: null, label: 'Autre', hex: '#0A84FF' });
@@ -2883,7 +2918,18 @@
     tbody.innerHTML = '';
     try {
       const files = await api('/projects/' + projectId + '/files');
-      files.forEach(f => {
+      const logoFile = files.filter(f => f.category === 'logo').sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      const logoWrap = document.getElementById('logo-current-wrap');
+      if (logoFile) {
+        document.getElementById('logo-current-preview').src = API + '/projects/' + projectId + '/files/' + logoFile.id + '/download';
+        document.getElementById('logo-current-name').textContent = logoFile.fileName;
+        document.getElementById('logo-download-link').href = API + '/projects/' + projectId + '/files/' + logoFile.id + '/download';
+        logoWrap.classList.remove('hidden');
+      } else {
+        logoWrap.classList.add('hidden');
+      }
+
+      files.filter(f => f.category !== 'logo').forEach(f => {
         const tr = document.createElement('tr');
         const kb = (f.fileSize/1024).toFixed(1);
         tr.innerHTML = `<td>${escapeHtml(f.fileName)}</td><td class="mono" style="font-size:12px">${escapeHtml(f.fileType)}</td><td>${kb} Ko</td><td>${new Date(f.createdAt).toLocaleDateString('fr-FR')}</td>
@@ -2909,12 +2955,21 @@
   dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
   fileInput.addEventListener('change', () => { if (fileInput.files.length) uploadFile(fileInput.files[0]); });
 
-  async function uploadFile(file){
+  const logoDropzone = document.getElementById('logo-dropzone');
+  const logoFileInput = document.getElementById('logo-file-input');
+  logoDropzone.addEventListener('click', () => logoFileInput.click());
+  ['dragenter','dragover'].forEach(evt => logoDropzone.addEventListener(evt, e => { e.preventDefault(); logoDropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt => logoDropzone.addEventListener(evt, e => { e.preventDefault(); logoDropzone.classList.remove('drag'); }));
+  logoDropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0], 'logo'); });
+  logoFileInput.addEventListener('change', () => { if (logoFileInput.files.length) uploadFile(logoFileInput.files[0], 'logo'); });
+
+  async function uploadFile(file, category){
     const form = new FormData();
     form.append('file', file);
+    if (category) form.append('category', category);
     try {
       await api('/projects/' + state.currentProject.id + '/files', { method:'POST', body: form });
-      toast('Fichier ajouté.');
+      toast(category === 'logo' ? 'Logo mis à jour.' : 'Fichier ajouté.');
       loadFiles(state.currentProject.id);
     } catch(err){ toast(err.message, 'error'); }
   }

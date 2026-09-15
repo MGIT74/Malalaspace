@@ -21,7 +21,7 @@ const { createNoteSchema } = require('../validators/noteValidator');
 const { assignProjectSchema } = require('../validators/assignValidator');
 const { addStepSchema, adminCreateProjectSchema } = require('../validators/adminValidator');
 const { updateDeadlineSchema } = require('../validators/deadlineValidator');
-const { updateColorsSchema } = require('../validators/brandAssetValidator');
+const { updateColorsSchema, updateFontsSchema } = require('../validators/brandAssetValidator');
 
 const router = express.Router();
 
@@ -45,6 +45,7 @@ router.post('/:id/files', loadProject, upload.single('file'), fileController.upl
 router.get('/:id/files', loadProject, fileController.list);
 router.get('/:id/brand-asset', loadProject, brandAssetController.get);
 router.put('/:id/brand-asset', loadProject, validate(updateColorsSchema), brandAssetController.updateColors);
+router.put('/:id/brand-asset/fonts', loadProject, validate(updateFontsSchema), brandAssetController.updateFonts);
 router.get('/:id/files/:fileId/download', loadProject, fileController.download);
 router.delete('/:id/files/:fileId', loadProject, fileController.remove);
 

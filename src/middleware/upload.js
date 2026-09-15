@@ -14,6 +14,8 @@ const ALLOWED_MIME_TYPES = [
   'application/illustrator', // .ai (certains navigateurs)
   'application/x-eps',
   'image/x-eps',
+  'application/zip',
+  'application/x-zip-compressed', // charte graphique complète
 ];
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 Mo
@@ -23,7 +25,7 @@ const upload = multer({
   limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      return cb(ApiError.badRequest(`Type de fichier non autorisé : ${file.mimetype}. Formats acceptés : JPG, PNG, PDF, EPS, SVG/AI.`));
+      return cb(ApiError.badRequest(`Type de fichier non autorisé : ${file.mimetype}. Formats acceptés : JPG, PNG, PDF, EPS, SVG/AI, ZIP.`));
     }
     cb(null, true);
   },

@@ -85,4 +85,19 @@ async function upsertColors(user, project, incomingColors) {
   });
 }
 
-module.exports = { getBrandAsset, upsertColors };
+/**
+ * Enregistre les polices de la charte graphique (primaire/secondaire).
+ * Pas de verrouillage par rôle ici (contrairement aux couleurs) : simple info partagée.
+ */
+async function updateFonts(user, project, primaryFont, secondaryFont) {
+  if (!canAccess(user, project)) {
+    throw ApiError.forbidden();
+  }
+  return prisma.brandAsset.upsert({
+    where: { projectId: project.id },
+    update: { primaryFont: primaryFont || null, secondaryFont: secondaryFont || null },
+    create: { projectId: project.id, primaryFont: primaryFont || null, secondaryFont: secondaryFont || null },
+  });
+}
+
+module.exports = { getBrandAsset, upsertColors, updateFonts };

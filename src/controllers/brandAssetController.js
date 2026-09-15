@@ -11,4 +11,9 @@ const updateColors = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: brandAsset });
 });
 
-module.exports = { get, updateColors };
+const updateFonts = asyncHandler(async (req, res) => {
+  const brandAsset = await brandAssetService.updateFonts(req.user, req.project, req.body.primaryFont, req.body.secondaryFont);
+  res.status(200).json({ success: true, data: brandAsset });
+});
+
+module.exports = { get, updateColors, updateFonts };

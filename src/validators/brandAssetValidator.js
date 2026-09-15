@@ -10,4 +10,9 @@ const updateColorsSchema = z.object({
   colors: z.array(colorItemSchema).max(12),
 });
 
-module.exports = { updateColorsSchema };
+const updateFontsSchema = z.object({
+  primaryFont: z.string().max(100).optional(),
+  secondaryFont: z.string().max(100).optional(),
+});
+
+module.exports = { updateColorsSchema, updateFontsSchema };
