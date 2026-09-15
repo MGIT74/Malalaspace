@@ -340,7 +340,7 @@
         <img class="logo-img logo-dark" src="/assets/logo-white.png" alt="Malalaspace" style="height:32px;" />
         <img class="logo-img logo-light" src="/assets/logo-black.png" alt="Malalaspace" style="height:32px;" />
       </div>
-      <div class="auth-tabs">
+      <div class="auth-tabs hidden">
         <div class="auth-tab active" data-tab="login">Connexion</div>
         <div class="auth-tab" data-tab="register">Créer un compte</div>
       </div>
@@ -609,7 +609,10 @@
 
       <!-- CLIENTS (CRM basique) -->
       <section id="view-clients" class="hidden">
-        <div class="page-head"><h1>Clients</h1></div>
+        <div class="page-head">
+          <h1>Clients</h1>
+          <button class="btn btn-primary" id="new-client-btn">+ Ajouter un client</button>
+        </div>
         <div class="search-input-wrap">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
           <input type="text" id="clients-search" placeholder="Rechercher un client..." />
@@ -954,6 +957,32 @@
   </div>
 </div>
 
+<!-- New client account modal -->
+<div class="overlay hidden" id="new-client-overlay">
+  <div class="modal">
+    <h2>Ajouter un client</h2>
+    <form id="new-client-form">
+      <div class="field-row">
+        <div><label>Prénom *</label><input id="client-firstName" required /></div>
+        <div><label>Nom *</label><input id="client-lastName" required /></div>
+      </div>
+      <label>Entreprise</label>
+      <input id="client-company" />
+      <label>Email *</label>
+      <input type="email" id="client-email" required />
+      <label>Téléphone</label>
+      <input id="client-phone" />
+      <label>Mot de passe temporaire *</label>
+      <input type="password" id="client-password" required minlength="8" placeholder="À communiquer directement au client" />
+      <p class="save-hint">Le mot de passe n'est jamais envoyé par email — communique-le directement au client.</p>
+      <div class="save-row">
+        <button type="button" class="btn btn-ghost" id="client-cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer le compte</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- New team member modal -->
 <div class="overlay hidden" id="new-team-overlay">
   <div class="modal">
@@ -1127,6 +1156,16 @@
 
   // ---------- Sidebar navigation ----------
   const ALL_VIEWS = ['dashboard', 'clients', 'settings', 'detail', 'profile', 'team', 'calendar', 'invoices', 'showcase', 'leads', 'chatbot'];
+  // Chaque vue correspond à un fragment d'URL (#...) — jamais envoyé au serveur, uniquement
+  // utilisé côté navigateur pour se souvenir de la page affichée (persiste au rafraîchissement).
+  const VIEW_HASH_MAP = {
+    dashboard: '', clients: 'clients', settings: 'settings', profile: 'profile',
+    team: 'team', calendar: 'calendar', invoices: 'invoices', showcase: 'showcase',
+    leads: 'leads', chatbot: 'chatbot',
+    // 'detail' n'a pas d'entrée fixe : showDetail() gère lui-même 'project/<id>'
+  };
+  let suppressHashChange = false;
+
   function switchView(view){
     ALL_VIEWS.forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
@@ -1134,6 +1173,13 @@
     document.querySelectorAll('.sidebar .nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.view === view);
     });
+    if (Object.prototype.hasOwnProperty.call(VIEW_HASH_MAP, view)) {
+      const newHash = '#' + VIEW_HASH_MAP[view];
+      if (location.hash !== newHash) {
+        suppressHashChange = true;
+        location.hash = newHash;
+      }
+    }
   }
 
   document.querySelectorAll('.sidebar .nav-item').forEach(item => {
@@ -1305,6 +1351,31 @@
       e.target.reset();
       toast('Membre ajouté à l\'équipe.');
       showTeam();
+    } catch(err){ toast(err.message, 'error'); }
+  });
+
+  // ---------- Création d'un compte client (admin) ----------
+  const clientOverlay = document.getElementById('new-client-overlay');
+  document.getElementById('new-client-btn').addEventListener('click', () => clientOverlay.classList.remove('hidden'));
+  document.getElementById('client-cancel').addEventListener('click', () => clientOverlay.classList.add('hidden'));
+  clientOverlay.addEventListener('click', (e) => { if (e.target === clientOverlay) clientOverlay.classList.add('hidden'); });
+
+  document.getElementById('new-client-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/users/team', { method:'POST', body: JSON.stringify({
+        firstName: document.getElementById('client-firstName').value,
+        lastName: document.getElementById('client-lastName').value,
+        company: document.getElementById('client-company').value || undefined,
+        email: document.getElementById('client-email').value,
+        phone: document.getElementById('client-phone').value || undefined,
+        password: document.getElementById('client-password').value,
+        role: 'CLIENT',
+      })});
+      clientOverlay.classList.add('hidden');
+      e.target.reset();
+      toast('Compte client créé.');
+      showClients();
     } catch(err){ toast(err.message, 'error'); }
   });
 
@@ -2162,7 +2233,8 @@
     });
     document.getElementById('auth-error').classList.add('hidden');
     document.getElementById('auth-success').classList.add('hidden');
-    document.querySelector('.auth-tabs').classList.toggle('hidden', id === 'forgot-form' || id === 'reset-form');
+    // Onglets masqués en permanence : l'inscription publique est désactivée, seul l'admin crée des comptes
+    document.querySelector('.auth-tabs').classList.add('hidden');
   }
 
   document.getElementById('forgot-password-link').addEventListener('click', () => showAuthForm('forgot-form'));

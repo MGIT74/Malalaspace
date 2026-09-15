@@ -127,6 +127,7 @@ async function createTeamMember(admin, data) {
   }
 
   const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+  const role = ['CLIENT', 'ADMIN'].includes(data.role) ? data.role : 'EMPLOYEE';
 
   const member = await prisma.user.create({
     data: {
@@ -134,16 +135,21 @@ async function createTeamMember(admin, data) {
       lastName: data.lastName,
       email: data.email,
       phone: data.phone || null,
+      company: data.company || null,
       passwordHash,
-      role: data.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+      role,
       emailVerified: true, // créé directement par l'admin, pas besoin de vérification
     },
   });
 
+  const welcomeMessage = role === 'CLIENT'
+    ? "Un compte client vient d'être créé pour vous sur Malalaspace, votre portail de suivi de projet vidéo. Contactez votre agence pour obtenir votre mot de passe."
+    : "Un compte vient d'être créé pour vous sur Malalaspace. Contactez votre administrateur pour obtenir votre mot de passe.";
+
   emailService.sendEmail({
     to: member.email,
     subject: 'Votre accès Malalaspace',
-    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;"><h2 style="color:#0A84FF;">Bienvenue dans l'équipe</h2><p>Bonjour ${member.firstName},</p><p>Un compte vient d'être créé pour vous sur Malalaspace. Contactez votre administrateur pour obtenir votre mot de passe.</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;"><h2 style="color:#0A84FF;">Bienvenue sur Malalaspace</h2><p>Bonjour ${member.firstName},</p><p>${welcomeMessage}</p></div>`,
   }).catch(() => {});
 
   const { passwordHash: _omit, ...safeMember } = member;

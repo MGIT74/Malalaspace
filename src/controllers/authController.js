@@ -1,10 +1,13 @@
 const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/authService');
 const env = require('../config/env');
+const ApiError = require('../utils/apiError');
 
+// Inscription publique désactivée : seul un admin peut créer un compte (client ou employé)
+// depuis l'app, via /api/users/team. La fonction authService.register reste disponible
+// pour un usage futur éventuel (ex: invitation), mais n'est plus exposée publiquement ici.
 const register = asyncHandler(async (req, res) => {
-  const { user, tokens } = await authService.register(req.body, env.frontendUrl);
-  res.status(201).json({ success: true, data: { user, ...tokens } });
+  throw ApiError.forbidden("L'inscription publique est désactivée. Contactez votre administrateur pour obtenir un accès.");
 });
 
 const login = asyncHandler(async (req, res) => {
